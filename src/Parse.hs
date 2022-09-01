@@ -164,12 +164,13 @@ fix :: P STerm
 fix = do i <- getPos
          reserved "fix"
          (f, fty) <- parens binding
-         (x, xty) <- parens binding
-         l <- many (parens binding)
+         l <- many1 (parens binding)
          reservedOp "->"
          t <- expr
-         let lam = if null l then t else (SSugar (SugarLam i l t))
-         return (SFix i (f,fty) (x,xty) lam)
+         let lam = if length l == 1
+                   then (SFix i (f,fty) (head l) t)
+                   else (SSugar (SugarFix i (f, fty) l t))
+         return lam
 
 tryparens :: P a -> P a
 tryparens p = parens p <|> p
