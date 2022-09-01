@@ -135,6 +135,14 @@ lam = do i <- getPos
          t <- expr
          return (SLam i (v,ty) t)
 
+multilam :: P STerm
+multilam = do i <- getPos
+              reserved "fun"
+              l <- many1 (parens binding)
+              reservedOp "->"
+              t <- expr
+              return (SSugar (SugarLam i l t))
+
 -- Nota el parser app también parsea un solo atom.
 app :: P STerm
 app = do i <- getPos
@@ -157,24 +165,58 @@ fix = do i <- getPos
          reserved "fix"
          (f, fty) <- parens binding
          (x, xty) <- parens binding
+         l <- many (parens binding)
          reservedOp "->"
          t <- expr
-         return (SFix i (f,fty) (x,xty) t)
+         let lam = if null l then t else (SSugar (SugarLam i l t))
+         return (SFix i (f,fty) (x,xty) lam)
+
+tryparens :: P a -> P a
+tryparens p = parens p <|> p
 
 letexp :: P STerm
 letexp = do
   i <- getPos
   reserved "let"
-  (v,ty) <- parens binding
-  reservedOp "="  
-  def <- expr
-  reserved "in"
-  body <- expr
-  return (SLet i (v,ty) def body)
+  try (do
+    (v,ty) <- tryparens binding
+    reservedOp "="
+    def <- expr
+    reserved "in"
+    body <- expr
+    return (SLet i (v,ty) def body))
+   <|> do
+      (functionName,params,returnType) <- tryparens
+        (do
+          functionName <- var
+          params <- many1 (parens binding)
+          reservedOp ":"
+          returnType <- typeP
+          return (functionName,params,returnType))
+      reservedOp "="
+      def <- expr
+      reserved "in"
+      body <- expr
+      return (SSugar (SugarLetFun i (functionName,params,returnType) def body))
+   <|> do
+     reserved "rec"
+     (functionName,params,returnType) <- tryparens
+       (do
+         functionName <- var
+         params <- many1 (parens binding)
+         reservedOp ":"
+         returnType <- typeP
+         return (functionName,params,returnType))
+     reservedOp "="
+     def <- expr
+     reserved "in"
+     body <- expr
+     return (SSugar (SugarLetFunRec i (functionName,params,returnType) def body))
+
 
 -- | Parser de términos
 tm :: P STerm
-tm = app <|> lam <|> ifz <|> printOp <|> fix <|> letexp
+tm = app <|> (try lam <|> multilam) <|> ifz <|> printOp <|> fix <|> letexp
 
 -- | Parser de declaraciones
 decl :: P (Decl STerm)
