@@ -30,11 +30,6 @@ elab' env (SV p v) =
 
 elab' _ (SConst p c) = Const p c
 elab' env (SLam p (v,ty) t) = Lam p v ty (close v (elab' (v:env) t))
-elab' env (SSugar (SugarLam p xs t)) =
-  let
-    a = map (\(v,ty) -> SLam p (v,ty)) xs
-    t' = foldr (\t1 t2 -> t1 t2) t a
-  in elab' env t'
 elab' env (SFix p (f,fty) (x,xty) t) = Fix p f fty x xty (close2 f x (elab' (x:f:env) t))
 elab' env (SIfZ p c t e)         = IfZ p (elab' env c) (elab' env t) (elab' env e)
 -- Operadores binarios
@@ -45,6 +40,15 @@ elab' env (SPrint i str t) = Print i str (elab' env t)
 elab' env (SApp p h a) = App p (elab' env h) (elab' env a)
 elab' env (SLet p (v,vty) def body) =  
   Let p v vty (elab' env def) (close v (elab' (v:env) body))
+elab' env (SSugar (SugarLam p xs t)) =
+  let
+    a = map (\(v,ty) -> SLam p (v,ty)) xs
+    t' = foldr (\t1 t2 -> t1 t2) t a
+  in elab' env t'
+elab' env (SSugar (SugarFix p (f,fty) xs t)) =
+  let
+    t' = SFix p (f,fty) (head xs) (SSugar (SugarLam p (tail xs) t))
+  in elab' env t'
 elab' env (SSugar (SugarLetFun p (functionName,params,returnType) sugarDef body)) =
   let
     def = SSugar (SugarLam p params sugarDef)

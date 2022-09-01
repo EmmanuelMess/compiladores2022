@@ -25,6 +25,7 @@ import           Data.List.Extra                ( nubSort )
 
 data Sugar info ty var =
     SugarLam info [(var, ty)] (STm info ty var)
+  | SugarFix info (var, ty) [(var, ty)] (STm info ty var)
   | SugarLetFun info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
   | SugarLetFunRec info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
   deriving (Show, Functor)
