@@ -33,6 +33,7 @@ module MonadFD4 (
   failFD4,
   addDecl,
   catchErrors,
+  unnameTy,
   MonadFD4,
   module Control.Monad.Except,
   module Control.Monad.State)
@@ -109,7 +110,21 @@ lookupDecl nm = do
 lookupTy :: MonadFD4 m => Name -> m (Maybe Ty)
 lookupTy nm = do
       s <- get
-      return $ lookup nm (tyEnv s)
+      return $ lookup nm ((tyEnv s)++(tyTypeEnv s))
+
+unnameTy :: MonadFD4 m => Pos -> Ty -> m Ty
+unnameTy p tt@(NamedTy name) =
+  do
+    tys <- gets tyTypeEnv
+    (case lookup name tys of
+      Just ty -> unnameTy p ty -- para desnombrar recursivamente
+      Nothing -> failPosFD4 p $ "Tipo"++name++" no fue declarado")
+unnameTy _ NatTy = return NatTy
+unnameTy p (FunTy a b) =
+  do
+    a' <- unnameTy p a
+    b' <- unnameTy p b
+    return (FunTy a' b')
 
 failPosFD4 :: MonadFD4 m => Pos -> String -> m a
 failPosFD4 p s = throwError (ErrPos p s)

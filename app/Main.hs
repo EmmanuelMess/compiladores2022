@@ -132,9 +132,10 @@ handleDecl d = do
         m <- getMode
         case m of
           Interactive -> do
-              (Decl p x tt) <- typecheckDecl d
-              te <- eval tt
-              addDecl (Decl p x te)
+              decl <- typecheckDecl d
+              (case decl of
+                Decl _ _ _ -> do { te <- eval (declBody decl); addDecl (Decl (declPos decl) (declName decl) te) }
+                DeclType _ _ _ -> do { addDecl decl })
           Typecheck -> do
               f <- getLastFile
               printFD4 ("Chequeando tipos de "++f)
@@ -148,6 +149,7 @@ handleDecl d = do
       where
         typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
         typecheckDecl (Decl p x t) = tcDecl (Decl p x (elab t))
+        typecheckDecl (DeclType a b c) = tcDecl (DeclType a b c) -- TODO fix
 
 
 data Command = Compile CompileForm
@@ -236,10 +238,11 @@ handleTerm ::  MonadFD4 m => STerm -> m ()
 handleTerm t = do
          let t' = elab t
          s <- get
-         tt <- tc t' (tyEnv s)
+         tt <- tc t' (tyEnv s) (tyTypeEnv s)
          te <- eval tt
          ppte <- pp te
-         printFD4 (ppte ++ " : " ++ ppTy (getTy tt))
+         doc <- ppTy (getTy tt)
+         printFD4 (ppte ++ " : " ++ doc)
 
 printPhrase   :: MonadFD4 m => String -> m ()
 printPhrase x =
@@ -247,7 +250,8 @@ printPhrase x =
     x' <- parseIO "<interactive>" tm x
     let ex = elab x'
     tyenv <- gets tyEnv
-    tex <- tc ex tyenv
+    tytypeenv <- gets tyTypeEnv
+    tex <- tc ex tyenv tytypeenv
     t  <- case x' of
            (SV p f) -> fromMaybe tex <$> lookupDecl f
            _       -> return tex
@@ -261,6 +265,7 @@ typeCheckPhrase x = do
          t <- parseIO "<interactive>" tm x
          let t' = elab t
          s <- get
-         tt <- tc t' (tyEnv s)
+         tt <- tc t' (tyEnv s) (tyTypeEnv s)
          let ty = getTy tt
-         printFD4 (ppTy ty)
+         doc <- ppTy ty
+         printFD4 doc
