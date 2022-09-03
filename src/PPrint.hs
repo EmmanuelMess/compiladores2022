@@ -34,8 +34,8 @@ import Prettyprinter
       parens,
       Doc,
       Pretty(pretty) )
-import MonadFD4 ( gets, MonadFD4 )
-import Global ( GlEnv(glb) )
+import MonadFD4 ( gets, unnameTy, MonadFD4 )
+import Global ( GlEnv(glb), tyTypeEnv )
 
 freshen :: [Name] -> Name -> Name
 freshen ns n = let cands = n : map (\i -> n ++ show i) [0..] 
@@ -68,6 +68,17 @@ openAll gp ns (Let p v ty m n) =
     let v'= freshen ns v 
     in  SLet (gp p) (v',ty) (openAll gp ns m) (openAll gp (v':ns) (open v' n))
 
+openType :: (Ty -> Ty) -> Tm i Var -> Tm i Var
+openType _ x@(V _ _) = x
+openType _ x@(Const _ _) = x
+openType m (Lam a b ty d) = Lam a b (m ty) d
+openType m (App a b c) = App a (openType m b) (openType m c)
+openType m (Print a b c) = Print a b (openType m c)
+openType m (BinaryOp a b c d) = BinaryOp a b (openType m c) (openType m d)
+openType m (Fix a b tya d tyb f) = Fix a b (m tya) d (m tyb) f
+openType m (IfZ a b c d) = IfZ a (openType m b) (openType m c) (openType m d)
+openType m (Let a b ty d e) = Let a b (m ty) (openType m d) e
+
 --Colores
 constColor :: Doc AnsiStyle -> Doc AnsiStyle
 constColor = annotate (color Red)
@@ -95,12 +106,20 @@ ppName = id
 -- | Pretty printer para tipos (Doc)
 ty2doc :: Ty -> Doc AnsiStyle
 ty2doc NatTy     = typeColor (pretty "Nat")
+ty2doc (NamedTy _) = undefined -- No deberia llegar nunca
 ty2doc (FunTy x@(FunTy _ _) y) = sep [parens (ty2doc x), typeOpColor (pretty "->"),ty2doc y]
 ty2doc (FunTy x y) = sep [ty2doc x, typeOpColor (pretty "->"),ty2doc y] 
 
 -- | Pretty printer para tipos (String)
-ppTy :: Ty -> String
-ppTy = render . ty2doc
+ppTy :: MonadFD4 m => Ty -> m String
+ppTy t =
+  do
+    tys <- gets tyTypeEnv
+    let f = \ty -> (case ty of
+                     NamedTy n -> f (maybe undefined id (lookup n tys))
+                     NatTy -> NatTy
+                     FunTy x y -> FunTy (f x) (f y))
+    return ((render . ty2doc . f) t)
 
 c2doc :: Const -> Doc AnsiStyle
 c2doc (CNat n) = constColor (pretty (show n))
@@ -180,20 +199,40 @@ binding2doc (x, ty) =
 pp :: MonadFD4 m => TTerm -> m String
 -- Uncomment to use the Show instance for Term
 {- pp = show -}
-pp t = do
-       gdecl <- gets glb
-       return (render . t2doc False $ openAll fst (map declName gdecl) t)
+pp t =
+  do
+    gdecl <- gets glb
+    tys <- gets tyTypeEnv
+    let f = \ty -> (case ty of
+                     NamedTy n -> f (maybe undefined id (lookup n tys))
+                     NatTy -> NatTy
+                     FunTy x y -> FunTy (f x) (f y))
+    return (render . t2doc False $ openAll fst (map declName gdecl) $ (openType f) t)
 
 render :: Doc AnsiStyle -> String
 render = unpack . renderStrict . layoutSmart defaultLayoutOptions
 
 -- | Pretty printing de declaraciones
 ppDecl :: MonadFD4 m => Decl TTerm -> m String
-ppDecl (Decl p x t) = do 
+ppDecl (Decl p x t) = do
   gdecl <- gets glb
+  tys <- gets tyTypeEnv
+  let f = \ty -> (case ty of
+                   NamedTy n -> f (maybe undefined id (lookup n tys))
+                   NatTy -> NatTy
+                   FunTy x y -> FunTy (f x) (f y))
   return (render $ sep [defColor (pretty "let")
                        , name2doc x 
                        , defColor (pretty "=")] 
-                   <+> nest 2 (t2doc False (openAll fst (map declName gdecl) t)))
-                         
-
+                   <+> nest 2 (t2doc False (openAll fst (map declName gdecl) $ openType f t)))
+ppDecl (DeclType p x ty) = do
+  gdecl <- gets glb
+  tys <- gets tyTypeEnv
+  let f = \ty -> (case ty of
+                  NamedTy n -> f (maybe undefined id (lookup n tys))
+                  NatTy -> NatTy
+                  FunTy x y -> FunTy (f x) (f y))
+  return (render $ sep [defColor (pretty "type")
+                     , name2doc x
+                     , defColor (pretty "=")]
+                 <+> nest 2 (ty2doc (f ty)))
