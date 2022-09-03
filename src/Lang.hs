@@ -46,7 +46,8 @@ data STm info ty var =
 
 -- | AST de Tipos
 data Ty =
-      NatTy
+    NamedTy Name
+    | NatTy
     | FunTy Ty Ty
     deriving (Show,Eq)
 
@@ -61,11 +62,9 @@ data BinaryOp = Add | Sub
   deriving Show
 
 -- | tipo de datos de declaraciones, parametrizado por el tipo del cuerpo de la declaración
-data Decl a = Decl
-  { declPos  :: Pos
-  , declName :: Name
-  , declBody :: a
-  }
+data Decl a =
+     Decl { declPos  :: Pos, declName :: Name, declBody :: a }
+  |  DeclType { declPos  :: Pos, declName :: Name, declType :: Ty } -- TODO doesnt have a and brakes stuff
   deriving (Show, Functor)
 
 -- | AST de los términos. 
@@ -81,7 +80,7 @@ data Tm info var =
   | BinaryOp info BinaryOp (Tm info var) (Tm info var)
   | Fix info Name Ty Name Ty (Scope2 info var)
   | IfZ info (Tm info var) (Tm info var) (Tm info var)
-  | Let info Name Ty (Tm info var)  (Scope info var)
+  | Let info Name Ty (Tm info var) (Scope info var)
   deriving (Show, Functor)
 
 

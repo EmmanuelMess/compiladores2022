@@ -83,6 +83,7 @@ getPos = do pos <- getPosition
 
 tyatom :: P Ty
 tyatom = (reserved "Nat" >> return NatTy)
+         <|> do { v <- identifier; return (NamedTy v) }
          <|> parens typeP
 
 typeP :: P Ty
@@ -221,13 +222,21 @@ tm = app <|> (try lam <|> multilam) <|> ifz <|> printOp <|> fix <|> letexp
 
 -- | Parser de declaraciones
 decl :: P (Decl STerm)
-decl = do 
-     i <- getPos
-     reserved "let"
-     v <- var
-     reservedOp "="
-     t <- expr
-     return (Decl i v t)
+decl =
+  do
+    i <- getPos
+    (do
+      reserved "let"
+      v <- var
+      reservedOp "="
+      t <- expr
+      return (Decl i v t))
+     <|> do
+       reserved "type"
+       v <- var
+       reservedOp "="
+       ty <- typeP
+       return (DeclType i v ty)
 
 -- | Parser de programas (listas de declaraciones) 
 program :: P [Decl STerm]

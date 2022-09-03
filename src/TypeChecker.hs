@@ -9,9 +9,11 @@ Stability   : experimental
 -}
 module TypeChecker (
    tc,
-   tcDecl 
+   tcDecl,
+   unnameTy
    ) where
 
+import Common
 import Lang
 import Global
 import MonadFD4
@@ -24,54 +26,58 @@ import Subst
 -- usando la interfaz de las mónadas @MonadFD4@.
 tc :: MonadFD4 m => Term         -- ^ término a chequear
                  -> [(Name,Ty)]  -- ^ entorno de tipado
+                 -> [(Name,Ty)]  -- ^ nombres de tipo
                  -> m TTerm        -- ^ tipo del término
-tc (V p (Bound _)) _ = failPosFD4 p "typecheck: No deberia haber variables Bound"
-tc (V p (Free n)) bs = case lookup n bs of
-                           Nothing -> failPosFD4 p $ "Variable no declarada "++ppName n
-                           Just ty -> return (V (p,ty) (Free n)) 
-tc (V p (Global n)) bs = case lookup n bs of
-                           Nothing -> failPosFD4 p $ "Variable no declarada "++ppName n
-                           Just ty -> return (V (p,ty) (Global n))
-tc (Const p (CNat n)) _ = return (Const (p,NatTy) (CNat n))
-tc (Print p str t) bs = do 
-      tt <- tc t bs
+tc (V p (Bound _)) _ _ = failPosFD4 p "typecheck: No deberia haber variables Bound"
+tc (V p (Free n)) bs tys = case lookup n bs of
+                             Nothing -> failPosFD4 p $ "Variable no declarada "++ppName n
+                             Just ty -> return (V (p,ty) (Free n))
+tc (V p (Global n)) bs tys = case lookup n bs of
+                               Nothing -> case lookup n tys of
+                                            Nothing -> failPosFD4 p $ "Variable no declarada "++ppName n
+                                            Just _ -> failPosFD4 p $ "Variable "++(ppName n)++" es de tipo"
+                               Just ty -> return (V (p,ty) (Global n))
+tc (Const p (CNat n)) _ tys = return (Const (p,NatTy) (CNat n))
+tc (Print p str t) bs tys = do
+      tys <- gets tyTypeEnv
+      tt <- tc t bs tys
       expect NatTy tt
       return (Print (p, NatTy) str tt)
-tc (IfZ p c t t') bs = do
-       ttc  <- tc c bs
+tc (IfZ p c t t') bs tys = do
+       ttc  <- tc c bs tys
        expect NatTy ttc
-       tt  <- tc t bs
-       tt' <- tc t' bs
+       tt  <- tc t bs tys
+       tt' <- tc t' bs tys
        let ty = getTy tt
        expect ty tt'
        return (IfZ (p,ty) ttc tt tt')
-tc (Lam p v ty t) bs = do
-         tt <- tc (open v t) ((v,ty):bs)
+tc (Lam p v ty t) bs tys = do
+         tt <- tc (open v t) ((v,ty):bs) tys
          return (Lam (p, FunTy ty (getTy tt)) v ty (close v tt))
-tc (App p t u) bs = do
-         tt <- tc t bs
+tc (App p t u) bs tys = do
+         tt <- tc t bs tys
          (dom,cod) <- domCod tt
-         tu <- tc u bs
+         tu <- tc u bs tys
          expect dom tu
          return (App (p,cod) tt tu)
-tc (Fix p f fty x xty t) bs = do
+tc (Fix p f fty x xty t) bs tys = do
          (dom, cod) <- domCod (V (p,fty) (Free f))
          when (dom /= xty) $ do
            failPosFD4 p "El tipo del argumento de un fixpoint debe coincidir con el \
                         \dominio del tipo de la función"
          let t' = open2 f x t
-         tt' <- tc t' ((x,xty):(f,fty):bs)
+         tt' <- tc t' ((x,xty):(f,fty):bs) tys
          expect cod tt'
          return (Fix (p,fty) f fty x xty (close2 f x tt'))
-tc (Let p v ty def t) bs = do
-         tdef <- tc def bs
+tc (Let p v ty def t) bs tys = do
+         tdef <- tc def bs tys
          expect ty tdef
-         tt <- tc (open v t) ((v,ty):bs)
+         tt <- tc (open v t) ((v,ty):bs) tys
          return (Let (p,getTy tt) v ty tdef (close v tt))
-tc (BinaryOp p op t u) bs = do
-         tt <- tc t bs
+tc (BinaryOp p op t u) bs tys = do
+         tt <- tc t bs tys
          expect NatTy tt
-         tu <- tc u bs
+         tu <- tc u bs tys
          expect NatTy tu
          return (BinaryOp (p,NatTy) op tt tu)
 
@@ -82,34 +88,53 @@ typeError :: MonadFD4 m => TTerm   -- ^ término que se está chequeando
 typeError t s = do 
    ppt <- pp t
    failPosFD4 (getPos t) $ "Error de tipo en "++ppt++"\n"++s
- 
+
 -- | 'expect' chequea que el tipo esperado sea igual al que se obtuvo
 -- y lanza un error si no lo es.
 expect :: MonadFD4 m => Ty    -- ^ tipo esperado
                      -> TTerm
                      -> m TTerm
-expect ty tt = let ty' = getTy tt
-               in if ty == ty' then return tt 
-                               else typeError tt $ 
-              "Tipo esperado: "++ ppTy ty
-            ++"\npero se obtuvo: "++ ppTy ty'
+expect ty tt =
+  do
+    let ty' = getTy tt
+    let p = getPos tt
+    tya <- unnameTy p ty
+    tyb <- unnameTy p ty'
+    doc <- ppTy ty
+    doc' <- ppTy ty'
+    if tya == tyb
+      then return tt
+      else typeError tt $  "Tipo esperado: "++doc++"\npero se obtuvo: "++doc'
 
 -- | 'domCod chequea que un tipo sea función
 -- | devuelve un par con el tipo del dominio y el codominio de la función
 domCod :: MonadFD4 m => TTerm -> m (Ty, Ty)
-domCod tt = case getTy tt of
-    FunTy d c -> return (d, c)
-    _         -> typeError tt $ "Se esperaba un tipo función, pero se obtuvo: " ++ ppTy (getTy tt)
+domCod tt =
+  do
+    ty <- unnameTy (getPos tt) (getTy tt)
+    (case ty of
+      FunTy d c -> return (d, c)
+      _         -> do
+                     doc <- ppTy (getTy tt)
+                     typeError tt $ "Se esperaba un tipo función, pero se obtuvo: " ++ doc)
 
 -- | 'tcDecl' chequea el tipo de una declaración
 -- y la agrega al entorno de tipado de declaraciones globales
 tcDecl :: MonadFD4 m  => Decl Term -> m (Decl TTerm)
-tcDecl (Decl p n t) = do
+tcDecl (Decl p n t) =
+  do
     --chequear si el nombre ya está declarado
     mty <- lookupTy n
     case mty of
         Nothing -> do  --no está declarado 
                   s <- get
-                  tt <- tc t (tyEnv s)                 
+                  tt <- tc t (tyEnv s) (tyTypeEnv s)
                   return (Decl p n tt)
+        Just _  -> failPosFD4 p $ n ++" ya está declarado"
+tcDecl (DeclType p n ty) =
+  do
+    --chequear si el nombre ya está declarado
+    mty <- lookupTy n
+    case mty of
+        Nothing -> return (DeclType p n ty) --no está declarado
         Just _  -> failPosFD4 p $ n ++" ya está declarado"
