@@ -118,7 +118,7 @@ unnameTy p tt@(NamedTy name) =
     tys <- gets tyTypeEnv
     (case lookup name tys of
       Just ty -> unnameTy p ty -- para desnombrar recursivamente
-      Nothing -> failPosFD4 p $ "Tipo"++name++" no fue declarado")
+      Nothing -> failPosFD4 p $ "Tipo "++name++" no fue declarado")
 unnameTy _ NatTy = return NatTy
 unnameTy p (FunTy a b) =
   do
