@@ -135,6 +135,7 @@ tcDecl (DeclType p n ty) =
   do
     --chequear si el nombre ya está declarado
     mty <- lookupTy n
+    ty' <- unnameTy p ty
     case mty of
-        False -> return (DeclType p n ty) --no está declarado
+        False -> return (DeclType p n ty') --no está declarado
         True -> failPosFD4 p $ n ++" ya está declarado"

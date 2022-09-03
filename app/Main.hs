@@ -142,7 +142,7 @@ handleDecl d = do
               decl <- typecheckDecl d
               (case decl of
                 Decl _ _ _ -> do { te <- eval (declBody decl); addDecl (Decl (declPos decl) (declName decl) te) }
-                DeclType _ _ _ -> do { addDecl decl })
+                DeclType _ _ _ -> addDecl decl)
           Typecheck -> do
               f <- getLastFile
               printFD4 ("Chequeando tipos de "++f)
