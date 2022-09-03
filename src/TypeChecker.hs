@@ -126,15 +126,15 @@ tcDecl (Decl p n t) =
     --chequear si el nombre ya está declarado
     mty <- lookupTy n
     case mty of
-        Nothing -> do  --no está declarado 
+        False -> do  --no está declarado
                   s <- get
                   tt <- tc t (tyEnv s) (tyTypeEnv s)
                   return (Decl p n tt)
-        Just _  -> failPosFD4 p $ n ++" ya está declarado"
+        True  -> failPosFD4 p $ n ++" ya está declarado"
 tcDecl (DeclType p n ty) =
   do
     --chequear si el nombre ya está declarado
     mty <- lookupTy n
     case mty of
-        Nothing -> return (DeclType p n ty) --no está declarado
-        Just _  -> failPosFD4 p $ n ++" ya está declarado"
+        False -> return (DeclType p n ty) --no está declarado
+        True -> failPosFD4 p $ n ++" ya está declarado"

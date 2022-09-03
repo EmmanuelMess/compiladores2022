@@ -107,10 +107,10 @@ lookupDecl nm = do
    where hasName :: Name -> Decl a -> Bool
          hasName nm (Decl { declName = nm' }) = nm == nm'
 
-lookupTy :: MonadFD4 m => Name -> m (Maybe Ty)
+lookupTy :: MonadFD4 m => Name -> m Bool
 lookupTy nm = do
       s <- get
-      return $ lookup nm ((tyEnv s)++(tyTypeEnv s))
+      return $ elem nm $ map fst ((tyEnv s)++(tyTypeEnv s))
 
 unnameTy :: MonadFD4 m => Pos -> Ty -> m Ty
 unnameTy p tt@(NamedTy name) =
