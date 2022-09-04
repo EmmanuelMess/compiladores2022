@@ -141,7 +141,7 @@ handleDecl d = do
           Interactive -> do
               decl <- typecheckDecl d
               (case decl of
-                Decl _ _ _ -> do { te <- eval (declBody decl); addDecl (Decl (declPos decl) (declName decl) te) }
+                Decl p n ty b -> do { te <- eval b; addDecl (Decl p n ty te) }
                 DeclType _ _ _ -> addDecl decl)
           Typecheck -> do
               f <- getLastFile
@@ -161,7 +161,7 @@ handleDecl d = do
 
       where
         typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
-        typecheckDecl (Decl p x t) = tcDecl (Decl p x (elab t))
+        typecheckDecl (Decl p x ty t) = tcDecl (Decl p x ty (elab t))
         typecheckDecl (DeclType a b c) = tcDecl (DeclType a b c) -- TODO fix
 
 
