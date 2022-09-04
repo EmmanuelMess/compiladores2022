@@ -1,0 +1,10 @@
+type n = Nat
+# :t n
+
+let a: Nat = let x: n = 3 in x
+
+type nn = n -> n
+
+let b: Nat = let f: nn = fun (x: n) -> 3 in f 34
+
+# type nn = m -> m
