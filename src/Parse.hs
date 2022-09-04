@@ -98,12 +98,16 @@ const :: P Const
 const = CNat <$> num
 
 printOp :: P STerm
-printOp = do
-  i <- getPos
-  reserved "print"
-  str <- option "" stringLiteral
-  a <- atom
-  return (SPrint i str a)
+printOp =
+  do
+    i <- getPos
+    reserved "print"
+    str <- option "" stringLiteral
+    try (do
+      a <- atom
+      return (SPrint i str a))
+     <|> do
+       return (SSugar (TSugarPrint i str))
 
 binary :: String -> BinaryOp -> Assoc -> Operator String () Identity STerm
 binary s f = Ex.Infix (reservedOp s >> return (SBinaryOp NoPos f))

@@ -61,6 +61,12 @@ elab' env (SSugar (TSugarLetFunRec p (functionName,(v,ty):lamParams,returnType) 
     fixty = FunTy ty vty
     def = SFix p (functionName,fixty) (v,ty) (SSugar (TSugarLam p lamParams sugarDef))
   in elab' env (SLet p (functionName,fixty) def body)
+elab' env (SSugar (TSugarPrint p str)) =
+  let
+    v = "$"
+  in elab' env (SLam p (v,NatTy) (SPrint p str (SV p v)))
+
+
 elabDecl :: SDecl STerm -> Decl STerm
 elabDecl (SDecl x) = x
 elabDecl (SDSugar (DSugarLetFun p (v,xs,ty) t)) =

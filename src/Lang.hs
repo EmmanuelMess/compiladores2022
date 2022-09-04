@@ -28,6 +28,7 @@ data TSugar info ty var =
   | TSugarFix info (var, ty) [(var, ty)] (STm info ty var)
   | TSugarLetFun info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
   | TSugarLetFunRec info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
+  | TSugarPrint info String
   deriving (Show, Functor)
 
 -- | AST the términos superficiales
