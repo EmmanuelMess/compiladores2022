@@ -53,7 +53,7 @@ data Ty =
 
 type Name = String
 
-type STerm = STm Pos Ty Name -- ^ 'STm' tiene 'Name's como variables ligadas y libres y globales, guarda posición  
+type STerm = STm Pos Ty Name -- ^ 'STm' tiene 'Name's como variables ligadas y libres y globales, guarda posición
 
 newtype Const = CNat Int
   deriving Show
@@ -62,9 +62,8 @@ data BinaryOp = Add | Sub
   deriving Show
 
 data DSugar a =
-    DSugarFix Pos (Name, Ty) [(Name, Ty)] a
-  | DSugarLetFun Pos (Name, [(Name, Ty)], Ty) a a
-  | DSugarLetFunRec Pos (Name, [(Name, Ty)], Ty) a a
+    DSugarLetFun Pos (Name, [(Name, Ty)], Ty) a
+  | DSugarLetFunRec Pos (Name, [(Name, Ty)], Ty) a
   deriving (Show, Functor)
 
 data SDecl a =
