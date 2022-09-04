@@ -176,6 +176,15 @@ fix = do i <- getPos
 tryparens :: P a -> P a
 tryparens p = parens p <|> p
 
+getletfun :: P (Name, [(Name, Ty)], Ty)
+getletfun = tryparens
+  (do
+    functionName <- var
+    params <- many1 (parens binding)
+    reservedOp ":"
+    returnType <- typeP
+    return (functionName,params,returnType))
+
 letexp :: P STerm
 letexp = do
   i <- getPos
@@ -188,13 +197,7 @@ letexp = do
     body <- expr
     return (SLet i (v,ty) def body))
    <|> do
-      (functionName,params,returnType) <- tryparens
-        (do
-          functionName <- var
-          params <- many1 (parens binding)
-          reservedOp ":"
-          returnType <- typeP
-          return (functionName,params,returnType))
+      (functionName,params,returnType) <- getletfun
       reservedOp "="
       def <- expr
       reserved "in"
@@ -202,13 +205,7 @@ letexp = do
       return (SSugar (TSugarLetFun i (functionName,params,returnType) def body))
    <|> do
      reserved "rec"
-     (functionName,params,returnType) <- tryparens
-       (do
-         functionName <- var
-         params <- many1 (parens binding)
-         reservedOp ":"
-         returnType <- typeP
-         return (functionName,params,returnType))
+     (functionName,params,returnType) <- getletfun
      reservedOp "="
      def <- expr
      reserved "in"
@@ -220,34 +217,50 @@ letexp = do
 tm :: P STerm
 tm = app <|> (try lam <|> multilam) <|> ifz <|> printOp <|> fix <|> letexp
 
--- | Parser de declaraciones
-decl :: P (Decl STerm)
-decl =
+letdecl :: P (SDecl STerm)
+letdecl =
   do
     i <- getPos
-    (do
-      reserved "let"
-      v <- var
-      reservedOp ":"
-      returnType <- typeP
+    reserved "let"
+    try (do
+      (functionName,returnType) <- tryparens binding
       reservedOp "="
-      t <- expr
-      return (Decl i v returnType t))
+      def <- expr
+      return (SDecl (Decl i functionName returnType def)))
      <|> do
-       reserved "type"
-       v <- var
+       (functionName,params,returnType) <- getletfun
        reservedOp "="
-       ty <- typeP
-       return (DeclType i v ty)
+       def <- expr
+       return (SDSugar (DSugarLetFun i (functionName,params,returnType) def))
+     <|> do
+       reserved "rec"
+       (functionName,params,returnType) <- getletfun
+       reservedOp "="
+       def <- expr
+       return (SDSugar (DSugarLetFunRec i (functionName,params,returnType) def))
+
+lettype :: P (SDecl STerm)
+lettype =
+  do
+    i <- getPos
+    reserved "type"
+    v <- var
+    reservedOp "="
+    ty <- typeP
+    return (SDecl (DeclType i v ty))
+
+-- | Parser de declaraciones
+decl :: P (SDecl STerm)
+decl = letdecl <|> lettype
 
 -- | Parser de programas (listas de declaraciones) 
-program :: P [Decl STerm]
+program :: P [SDecl STerm]
 program = many decl
 
 -- | Parsea una declaración a un término
 -- Útil para las sesiones interactivas
-declOrTm :: P (Either (Decl STerm) STerm)
-declOrTm =  try (Left <$> decl) <|> (Right <$> expr)
+declOrTm :: P (Either (SDecl STerm) STerm)
+declOrTm =  try (Right <$> expr) <|> (Left <$> decl)
 
 -- Corre un parser, chequeando que se pueda consumir toda la entrada
 runP :: P a -> String -> String -> Either ParseError a
