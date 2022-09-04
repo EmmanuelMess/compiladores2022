@@ -228,9 +228,11 @@ decl =
     (do
       reserved "let"
       v <- var
+      reservedOp ":"
+      returnType <- typeP
       reservedOp "="
       t <- expr
-      return (Decl i v t))
+      return (Decl i v returnType t))
      <|> do
        reserved "type"
        v <- var

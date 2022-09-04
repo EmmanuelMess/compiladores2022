@@ -214,7 +214,7 @@ render = unpack . renderStrict . layoutSmart defaultLayoutOptions
 
 -- | Pretty printing de declaraciones
 ppDecl :: MonadFD4 m => Decl TTerm -> m String
-ppDecl (Decl p x t) = do
+ppDecl (Decl p x _ t) = do
   gdecl <- gets glb
   tys <- gets tyTypeEnv
   let f = \ty -> (case ty of

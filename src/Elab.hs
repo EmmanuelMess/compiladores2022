@@ -61,5 +61,7 @@ elab' env (SSugar (TSugarLetFunRec p (functionName,(v,ty):lamParams,returnType) 
     fixty = FunTy ty vty
     def = SFix p (functionName,fixty) (v,ty) (SSugar (TSugarLam p lamParams sugarDef))
   in elab' env (SLet p (functionName,fixty) def body)
-elabDecl :: Decl STerm -> Decl Term
-elabDecl = fmap elab
+elabDecl :: SDecl STerm -> Decl Term
+elabDecl (SDecl (Decl p n ty x)) = Decl p n ty (elab x)
+elabDecl (SDecl (DeclType _ _ _)) = undefined
+elabDecl (SDSugar x) = undefined
