@@ -24,10 +24,10 @@ import           Common                         ( Pos )
 import           Data.List.Extra                ( nubSort )
 
 data TSugar info ty var =
-    TSugarLam info [(var, ty)] (STm info ty var)
+    TSugarLam info [([var], ty)] (STm info ty var)
   | TSugarFix info (var, ty) [(var, ty)] (STm info ty var)
-  | TSugarLetFun info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
-  | TSugarLetFunRec info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
+  | TSugarLetFun info (var, [([var], ty)], ty) (STm info ty var) (STm info ty var)
+  | TSugarLetFunRec info (var, [([var], ty)], ty) (STm info ty var) (STm info ty var)
   | TSugarPrint info String
   deriving (Show, Functor)
 
@@ -63,8 +63,8 @@ data BinaryOp = Add | Sub
   deriving Show
 
 data DSugar a =
-    DSugarLetFun Pos (Name, [(Name, Ty)], Ty) a
-  | DSugarLetFunRec Pos (Name, [(Name, Ty)], Ty) a
+    DSugarLetFun Pos (Name, [([Name], Ty)], Ty) a
+  | DSugarLetFunRec Pos (Name, [([Name], Ty)], Ty) a
   deriving (Show, Functor)
 
 data SDecl a =
