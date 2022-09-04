@@ -10,7 +10,7 @@ Este módulo permite elaborar términos y declaraciones para convertirlas desde
 fully named (@STerm) a locally closed (@Term@)
 -}
 
-module Elab ( elab, elabDecl) where
+module Elab ( elab, elabDecl ) where
 
 import Lang
 import Subst
@@ -61,7 +61,15 @@ elab' env (SSugar (TSugarLetFunRec p (functionName,(v,ty):lamParams,returnType) 
     fixty = FunTy ty vty
     def = SFix p (functionName,fixty) (v,ty) (SSugar (TSugarLam p lamParams sugarDef))
   in elab' env (SLet p (functionName,fixty) def body)
-elabDecl :: SDecl STerm -> Decl Term
-elabDecl (SDecl (Decl p n ty x)) = Decl p n ty (elab x)
-elabDecl (SDecl (DeclType _ _ _)) = undefined
-elabDecl (SDSugar x) = undefined
+elabDecl :: SDecl STerm -> Decl STerm
+elabDecl (SDecl x) = x
+elabDecl (SDSugar (DSugarLetFun p (v,xs,ty) t)) =
+  let
+    tys = map snd xs
+    ty' = foldr (FunTy) ty tys
+  in Decl p v ty' (SSugar (TSugarLam p xs t))
+elabDecl (SDSugar (DSugarLetFunRec p (v,xs,ty) t)) =
+  let
+    tys = map snd xs
+    ty' = foldr (FunTy) ty tys
+  in Decl p v ty' (SSugar (TSugarFix p (v,ty') xs t))
