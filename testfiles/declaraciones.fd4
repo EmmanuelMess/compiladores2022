@@ -1,0 +1,14 @@
+let x:Nat = 3
+let a: Nat = x+3
+
+let f: Nat -> Nat = fun (x: Nat) -> x +5
+let b: Nat =f(0)
+
+let g (x: Nat) : Nat = x +1
+let c: Nat =g 3
+
+let h (x: Nat) (y:Nat): Nat = x + y
+let d: Nat =h 3 3
+
+let rec gcd (m: Nat) (n: Nat): Nat = ifz n then m else ifz m then n else ifz (m - (n+1)) then gcd m (m - n) else gcd (m-n) n
+let e: Nat = gcd 6 3

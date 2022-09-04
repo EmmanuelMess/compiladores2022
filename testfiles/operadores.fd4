@@ -1,0 +1,5 @@
+let f (x: Nat): Nat = print "x=" x
+let a: Nat = f (0)
+
+let g : Nat ->  Nat = print "x="
+let b: Nat = g 0
