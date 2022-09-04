@@ -1,0 +1,9 @@
+let rec gcd (m n: Nat): Nat = ifz n then m else ifz m then n else ifz (m - (n+1)) then gcd m (m - n) else gcd (m-n) n
+let a: Nat = gcd 6 3
+
+let f (n m: Nat) (j k: Nat -> Nat): Nat = j (k m) + k (n)
+let g (x: Nat): Nat = 2
+let b: (Nat -> Nat) -> Nat = f 0 0 g
+let c: Nat = f 0 0 g g
+
+let d: Nat = (fun (x y z k: Nat) -> x + y) 0 1 5 6
