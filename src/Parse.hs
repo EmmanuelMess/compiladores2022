@@ -132,21 +132,24 @@ binding = do v <- var
              ty <- typeP
              return (v, ty)
 
-lam :: P STerm
-lam = do i <- getPos
-         reserved "fun"
-         (v,ty) <- parens binding
-         reservedOp "->"
-         t <- expr
-         return (SLam i (v,ty) t)
+-- parsea un par (variable [...] variable : tipo)
+multibinding :: P ([Name], Ty)
+multibinding =
+  do
+    v <- many1 var
+    reservedOp ":"
+    ty <- typeP
+    return (v, ty)
 
 multilam :: P STerm
-multilam = do i <- getPos
-              reserved "fun"
-              l <- many1 (parens binding)
-              reservedOp "->"
-              t <- expr
-              return (SSugar (TSugarLam i l t))
+multilam =
+  do
+    i <- getPos
+    reserved "fun"
+    l <- many1 (parens multibinding)
+    reservedOp "->"
+    t <- expr
+    return (SSugar (TSugarLam i l t))
 
 -- Nota el parser app también parsea un solo atom.
 app :: P STerm
@@ -180,11 +183,11 @@ fix = do i <- getPos
 tryparens :: P a -> P a
 tryparens p = parens p <|> p
 
-getletfun :: P (Name, [(Name, Ty)], Ty)
+getletfun :: P (Name, [([Name], Ty)], Ty)
 getletfun = tryparens
   (do
     functionName <- var
-    params <- many1 (parens binding)
+    params <- many1 (parens multibinding)
     reservedOp ":"
     returnType <- typeP
     return (functionName,params,returnType))
@@ -219,7 +222,7 @@ letexp = do
 
 -- | Parser de términos
 tm :: P STerm
-tm = app <|> (try lam <|> multilam) <|> ifz <|> printOp <|> fix <|> letexp
+tm = app <|> multilam <|> ifz <|> printOp <|> fix <|> letexp
 
 letdecl :: P (SDecl STerm)
 letdecl =
