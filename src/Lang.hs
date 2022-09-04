@@ -61,9 +61,19 @@ newtype Const = CNat Int
 data BinaryOp = Add | Sub
   deriving Show
 
+data DSugar a =
+    DSugarFix Pos (Name, Ty) [(Name, Ty)] a
+  | DSugarLetFun Pos (Name, [(Name, Ty)], Ty) a a
+  | DSugarLetFunRec Pos (Name, [(Name, Ty)], Ty) a a
+  deriving (Show, Functor)
+
+data SDecl a =
+    SDecl (Decl a)
+  | SDSugar (DSugar a)
+
 -- | tipo de datos de declaraciones, parametrizado por el tipo del cuerpo de la declaración
 data Decl a =
-     Decl { declPos  :: Pos, declName :: Name, declBody :: a }
+     Decl { declPos  :: Pos, declName :: Name, declBodyType :: Ty, declBody :: a }
   |  DeclType { declPos  :: Pos, declName :: Name, declType :: Ty } -- TODO doesnt have a and brakes stuff
   deriving (Show, Functor)
 
