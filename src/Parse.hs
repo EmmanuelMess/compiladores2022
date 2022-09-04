@@ -142,7 +142,7 @@ multilam = do i <- getPos
               l <- many1 (parens binding)
               reservedOp "->"
               t <- expr
-              return (SSugar (SugarLam i l t))
+              return (SSugar (TSugarLam i l t))
 
 -- Nota el parser app también parsea un solo atom.
 app :: P STerm
@@ -170,7 +170,7 @@ fix = do i <- getPos
          t <- expr
          let lam = if length l == 1
                    then (SFix i (f,fty) (head l) t)
-                   else (SSugar (SugarFix i (f, fty) l t))
+                   else (SSugar (TSugarFix i (f, fty) l t))
          return lam
 
 tryparens :: P a -> P a
@@ -199,7 +199,7 @@ letexp = do
       def <- expr
       reserved "in"
       body <- expr
-      return (SSugar (SugarLetFun i (functionName,params,returnType) def body))
+      return (SSugar (TSugarLetFun i (functionName,params,returnType) def body))
    <|> do
      reserved "rec"
      (functionName,params,returnType) <- tryparens
@@ -213,7 +213,7 @@ letexp = do
      def <- expr
      reserved "in"
      body <- expr
-     return (SSugar (SugarLetFunRec i (functionName,params,returnType) def body))
+     return (SSugar (TSugarLetFunRec i (functionName,params,returnType) def body))
 
 
 -- | Parser de términos

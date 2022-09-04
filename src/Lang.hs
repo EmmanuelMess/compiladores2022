@@ -23,11 +23,11 @@ module Lang where
 import           Common                         ( Pos )
 import           Data.List.Extra                ( nubSort )
 
-data Sugar info ty var =
-    SugarLam info [(var, ty)] (STm info ty var)
-  | SugarFix info (var, ty) [(var, ty)] (STm info ty var)
-  | SugarLetFun info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
-  | SugarLetFunRec info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
+data TSugar info ty var =
+    TSugarLam info [(var, ty)] (STm info ty var)
+  | TSugarFix info (var, ty) [(var, ty)] (STm info ty var)
+  | TSugarLetFun info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
+  | TSugarLetFunRec info (var, [(var, ty)], ty) (STm info ty var) (STm info ty var)
   deriving (Show, Functor)
 
 -- | AST the términos superficiales
@@ -41,7 +41,7 @@ data STm info ty var =
   | SFix info (var, ty) (var, ty) (STm info ty var)
   | SIfZ info (STm info ty var) (STm info ty var) (STm info ty var)
   | SLet info (var, ty) (STm info ty var) (STm info ty var)
-  | SSugar (Sugar info ty var)
+  | SSugar (TSugar info ty var)
   deriving (Show, Functor)
 
 -- | AST de Tipos

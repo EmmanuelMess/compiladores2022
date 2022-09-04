@@ -40,26 +40,26 @@ elab' env (SPrint i str t) = Print i str (elab' env t)
 elab' env (SApp p h a) = App p (elab' env h) (elab' env a)
 elab' env (SLet p (v,vty) def body) =  
   Let p v vty (elab' env def) (close v (elab' (v:env) body))
-elab' env (SSugar (SugarLam p xs t)) =
+elab' env (SSugar (TSugarLam p xs t)) =
   let
     a = map (\(v,ty) -> SLam p (v,ty)) xs
     t' = foldr (\t1 t2 -> t1 t2) t a
   in elab' env t'
-elab' env (SSugar (SugarFix p (f,fty) xs t)) =
+elab' env (SSugar (TSugarFix p (f,fty) xs t)) =
   let
-    t' = SFix p (f,fty) (head xs) (SSugar (SugarLam p (tail xs) t))
+    t' = SFix p (f,fty) (head xs) (SSugar (TSugarLam p (tail xs) t))
   in elab' env t'
-elab' env (SSugar (SugarLetFun p (functionName,params,returnType) sugarDef body)) =
+elab' env (SSugar (TSugarLetFun p (functionName,params,returnType) sugarDef body)) =
   let
-    def = SSugar (SugarLam p params sugarDef)
+    def = SSugar (TSugarLam p params sugarDef)
     vty = foldr FunTy returnType (map snd params)
     v = functionName
   in elab' env (SLet p (v, vty) def body)
-elab' env (SSugar (SugarLetFunRec p (functionName,(v,ty):lamParams,returnType) sugarDef body)) =
+elab' env (SSugar (TSugarLetFunRec p (functionName,(v,ty):lamParams,returnType) sugarDef body)) =
   let
     vty = foldr FunTy returnType (map snd lamParams)
     fixty = FunTy ty vty
-    def = SFix p (functionName,fixty) (v,ty) (SSugar (SugarLam p lamParams sugarDef))
+    def = SFix p (functionName,fixty) (v,ty) (SSugar (TSugarLam p lamParams sugarDef))
   in elab' env (SLet p (functionName,fixty) def body)
 elabDecl :: Decl STerm -> Decl Term
 elabDecl = fmap elab
