@@ -16,16 +16,22 @@ import Eval ( semOp )
 import Common
 
 
-data Val = Num Int | Clos CloseCEK deriving (Show)
+data Val =
+    Num Const
+  | Closure CloseCEK
+  deriving (Show)
 
-data CloseCEK = ClosureLam Env TTerm TTerm | ClosureFix Env TTerm TTerm deriving (Show)
+data CloseCEK =
+    ClosureLam Env TTerm TTerm
+  | ClosureFix Env TTerm TTerm
+  deriving (Show)
 
 type Env = [Val] -- TODO optimizar?
 
 data Frame =
     FPrint String
-  | FCEKAppL   Env TTerm --termc
-  | FCEKAppR CloseCEK --closc
+  | FAppL Env TTerm
+  | FAppR CloseCEK
   | FBinaryOpL Env BinaryOp TTerm
   | FBinaryOpR BinaryOp Val
   | FIfZ Env TTerm TTerm
@@ -61,7 +67,7 @@ search (IfZ _ c t1 t2) env k =
     return r
 search (App _ t1 t2) env k =
   do
-    let k' = (FCEKAppL  env t2):k
+    let k' = (FAppL  env t2):k
     r <- search t1 env k'
     return r
 search (V i (Free x)) _ _ = undefined --Imposible este pattern
@@ -72,9 +78,9 @@ search (V i (Global n)) env k =
      case val of
           Just x -> search x env k
           Nothing -> failPosFD4 (fst i) "Frame V error, V undefined"
-search (Const _ (CNat c)) env k = destroy (Num c) k
-search l@(Lam _ _ _ (Sc1 t)) env k = destroy (Clos (ClosureLam env t l)) k
-search l@(Fix _ _ _ _ _ (Sc2 t)) env k = destroy (Clos (ClosureFix env t l)) k
+search (Const _ c) env k = destroy (Num c) k
+search l@(Lam _ _ _ (Sc1 t)) env k = destroy (Closure (ClosureLam env t l)) k
+search l@(Fix _ _ _ _ _ (Sc2 t)) env k = destroy (Closure (ClosureFix env t l)) k
 search l@(Let _ _ _ t (Sc1 t')) env k = search t env ((FLet env t') : k)
 
 destroy :: MonadFD4 m => Val -> Kont -> m Val
@@ -83,28 +89,26 @@ destroy v@(Num n) ((FPrint str):k) =
     printFD4 (str++show n)
     r <- destroy v k
     return r
-destroy (Num v) ((FBinaryOpL  env op t):k) =
+destroy n@(Num v) ((FBinaryOpL  env op t):k) =
   do
-    r <- search t env ((FBinaryOpR  op (Num v)):k)
+    r <- search t env ((FBinaryOpR  op n):k)
     return r
-destroy (Num v1) ((FBinaryOpR op (Num v2)):k) =
-  case op of
-    Add -> destroy (Num $ v1 + v2) k
-    Sub -> destroy (Num $ max 0 (v1 - v2)) k
-destroy (Num n) ((FIfZ env t1 t2):k) =
+destroy (Num (CNat v1)) ((FBinaryOpR op (Num (CNat v2))):k) =
+  destroy (Num $ CNat $ semOp op v1 v2) k
+destroy (Num (CNat n)) ((FIfZ env t1 t2):k) =
   do
     let t = if n == 0 then t1 else t2
     r <- search t env k
     return r
-destroy (Clos closure) ((FCEKAppL env2 t2):k) =
+destroy (Closure closure) ((FAppL env2 t2):k) =
   do
-    let k' = (FCEKAppR closure):k
+    let k' = (FAppR closure):k
     r <- search t2 env2 k'
     return r
-destroy v ((FCEKAppR closure) : k) =
+destroy v ((FAppR closure) : k) =
   case closure of
     ClosureLam e tmL _ -> search tmL (v : e) k
-    a@(ClosureFix  e tmF _) -> search tmF (v : (Clos a) : e) k
+    a@(ClosureFix  e tmF _) -> search tmF (v : (Closure a) : e) k
 destroy v (FLet e tL : xs) = search tL (v : e) xs
 destroy v [] = return v
 
@@ -115,6 +119,6 @@ evalCEK t =
     return $ abrir s
 
 abrir :: Val -> TTerm
-abrir (Num c) = (Const (NoPos, NatTy) (CNat c))
-abrir (Clos (ClosureLam  _ _ f)) = f
-abrir (Clos (ClosureFix _ _ f)) = f
+abrir (Num c) = Const (NoPos, NatTy) c
+abrir (Closure (ClosureLam  _ _ f)) = f
+abrir (Closure (ClosureFix _ _ f)) = f
