@@ -36,6 +36,8 @@ import PPrint ( pp , ppTy, ppDecl )
 import MonadFD4
 import TypeChecker ( tc, tcDecl )
 
+import CEK
+
 prompt :: String
 prompt = "FD4> "
 
@@ -74,6 +76,8 @@ main = execParser opts >>= go
     go :: (Mode,Bool,[FilePath]) -> IO ()
     go (Interactive,opt,files) =
               runOrFail (Conf opt Interactive) (runInputT defaultSettings (repl files))
+    go (InteractiveCEK, opt, files) =
+              runOrFail (Conf opt InteractiveCEK) (runInputT defaultSettings (repl files))
     go (m,opt, files) =
               runOrFail (Conf opt m) $ mapM_ compileFile files
 
@@ -252,14 +256,20 @@ compilePhrase x = do
     dot <- parseIO "<interactive>" declOrTm x
     case dot of
       Left d  -> handleDecl d
-      Right t -> handleTerm t
+      Right t ->
+        do
+          mode <- getMode
+          case mode of
+            Interactive -> handleTerm t eval
+            InteractiveCEK -> handleTerm t evalCEK
+            _ -> failFD4 "fail Interactive without MODE"
 
-handleTerm ::  MonadFD4 m => STerm -> m ()
-handleTerm t = do
+handleTerm ::  MonadFD4 m => STerm ->(TTerm -> m TTerm) -> m ()
+handleTerm t f = do
          let t' = elab t
          s <- get
          tt <- tc t' (tyEnv s) (tyTypeEnv s)
-         te <- eval tt
+         te <- f tt
          ppte <- pp te
          doc <- ppTy (getTy tt)
          printFD4 (ppte ++ " : " ++ doc)
