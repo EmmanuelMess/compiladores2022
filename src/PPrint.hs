@@ -34,7 +34,7 @@ import Prettyprinter
       parens,
       Doc,
       Pretty(pretty) )
-import MonadFD4 ( gets, unnameTy, MonadFD4 )
+import MonadFD4 ( gets, MonadFD4 )
 import Global ( GlEnv(glb), tyTypeEnv )
 
 freshen :: [Name] -> Name -> Name
