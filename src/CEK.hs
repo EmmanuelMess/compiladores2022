@@ -38,16 +38,7 @@ data Frame =
   | FLet Env TTerm
   deriving (Show)
 
-
-
 type Kont = [Frame]
-
-
-
---data Val = Messu si dejamos las clausuras las necesitamos en una propia data por el data CloseCek
---    VConst Const
---  | VClosureLam Env Var TTerm
--- | VClosureFix Env Var Var TTerm
 
 search :: MonadFD4 m => TTerm -> Env -> Kont -> m Val
 search (Print _ str t) env k =
