@@ -23,7 +23,7 @@ import Control.Exception ( catch , IOException )
 import System.IO ( hPrint, stderr, hPutStrLn )
 import Data.Maybe ( fromMaybe )
 
-import System.Exit ( exitWith, ExitCode(ExitFailure) )
+import System.Exit ( exitWith, ExitCode(ExitFailure, ExitSuccess) )
 import Options.Applicative
 
 import Global
@@ -32,6 +32,7 @@ import Lang
 import Parse ( P, tm, program, declOrTm, runP )
 import Elab ( elab, elabDecl )
 import Eval ( eval )
+import Bytecompile ( Bytecode, runBC, bcWrite, bcRead, bytecompileModule, showBC )
 import PPrint ( pp , ppTy, ppDecl )
 import MonadFD4
 import TypeChecker ( tc, tcDecl )
@@ -48,8 +49,8 @@ parseMode :: Parser (Mode,Bool)
 parseMode = (,) <$>
       (flag' Typecheck ( long "typecheck" <> short 't' <> help "Chequear tipos e imprimir el término")
       <|> flag' InteractiveCEK (long "interactiveCEK" <> short 'k' <> help "Ejecutar interactivamente en la CEK")
-  -- <|> flag' Bytecompile (long "bytecompile" <> short 'm' <> help "Compilar a la BVM")
-  -- <|> flag' RunVM (long "runVM" <> short 'r' <> help "Ejecutar bytecode en la BVM")
+      <|> flag' Bytecompile (long "bytecompile" <> short 'm' <> help "Compilar a la BVM")
+      <|> flag' RunVM (long "runVM" <> short 'r' <> help "Ejecutar bytecode en la BVM")
       <|> flag Interactive Interactive ( long "interactive" <> short 'i' <> help "Ejecutar en forma interactiva")
   -- <|> flag' CC ( long "cc" <> short 'c' <> help "Compilar a código C")
   -- <|> flag' Canon ( long "canon" <> short 'n' <> help "Imprimir canonicalización")
@@ -77,8 +78,12 @@ main = execParser opts >>= go
               runOrFail (Conf opt Interactive) (runInputT defaultSettings (repl files))
     go (InteractiveCEK, opt, files) =
               runOrFail (Conf opt InteractiveCEK) (runInputT defaultSettings (repl files))
+    go (Bytecompile, opt, files) =
+              runOrFail (Conf opt Bytecompile) (mapM_ compileBytecode files)
+    go (RunVM, opt, files) =
+              runOrFail (Conf opt RunVM) (mapM_ runBytecode files)
     go (m,opt, files) =
-              runOrFail (Conf opt m) $ mapM_ compileFile files
+              runOrFail (Conf opt m) (mapM_ compileFile files)
 
 runOrFail :: Conf -> FD4 a -> IO a
 runOrFail c m = do
@@ -88,6 +93,22 @@ runOrFail c m = do
       liftIO $ hPrint stderr err
       exitWith (ExitFailure 1)
     Right v -> return v
+
+compileBytecode :: MonadFD4 m => FilePath -> m ()
+compileBytecode pathFd4 =
+  do
+    decls <- loadFile pathFd4
+    checkedDecls <- mapM (\d -> typecheckDecl (elabDecl d)) decls
+    bytecode <- bytecompileModule checkedDecls
+    let pathBc = pathFd4 ++ ".bc"
+    liftIO $ bcWrite bytecode pathBc
+    return ()
+
+runBytecode :: MonadFD4 m => FilePath -> m ()
+runBytecode pathBc =
+  do
+    bytecode <- liftIO $ bcRead pathBc
+    runBC bytecode
 
 repl :: (MonadFD4 m, MonadMask m) => [FilePath] -> InputT m ()
 repl args = do
@@ -154,11 +175,12 @@ handleDecl d = do
               (case decl of
                 Decl p n ty b -> do { te <- eval b; addDecl (Decl p n ty te) }
                 DeclType _ _ _ -> addDecl decl)
+          Bytecompile -> undefined -- No lidia con decl
+          RunVM -> undefined -- No se ejecuta aca
 
-      where
-        typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
-        typecheckDecl (Decl p x ty t) = tcDecl (Decl p x ty (elab t))
-        typecheckDecl (DeclType a b c) = tcDecl (DeclType a b c) -- TODO fix
+typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
+typecheckDecl (Decl p x ty t) = tcDecl (Decl p x ty (elab t))
+typecheckDecl (DeclType a b c) = tcDecl (DeclType a b c) -- TODO fix
 
 
 data Command = Compile CompileForm

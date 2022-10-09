@@ -43,8 +43,8 @@ data Mode =
     Interactive
   | Typecheck
   | InteractiveCEK
-  -- | Bytecompile
-  -- | RunVM
+  | Bytecompile
+  | RunVM
   -- | CC
   -- | Canon
   -- | Assembler
