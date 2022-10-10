@@ -33,7 +33,7 @@ import UnnameTypes
 import Parse ( P, tm, program, declOrTm, runP )
 import Elab ( elab, elabDecl )
 import Eval ( eval )
-import Bytecompile ( Bytecode, runBC, bcWrite, bcRead, bytecompileModule, showBC )
+import Bytecompile ( runBC, bcWrite, bcRead, bytecompileModule, showBC )
 import PPrint ( pp , ppTy, ppDecl )
 import MonadFD4
 import TypeChecker ( tc, tcDecl )
