@@ -16,8 +16,11 @@ module Bytecompile
  where
 
 import Lang
+import Eval ( semOp )
 import Subst
 import MonadFD4
+
+import Control.Arrow
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString as B
@@ -98,7 +101,7 @@ showOps (PRINT:xs)       = let (msg,_:rest) = span (/=NULL) xs
                            in ("PRINT " ++ show (bc2string msg)) : showOps rest
 showOps (PRINTN:xs)      = "PRINTN" : showOps xs
 showOps (ADD:xs)         = "ADD" : showOps xs
-showOps (IFZ:xs)         = "IFZ" : showOps xs
+showOps (IFZ:i:j:xs)     = ("IFZ endif="++(show i)++" endelse="++(show j)) : showOps xs
 showOps (x:xs)           = show x : showOps xs
 
 showBC :: Bytecode -> String
@@ -138,7 +141,7 @@ bcc (BinaryOp _ op t1 t2) =
 bcc (Fix _ name _ f _ (Sc2 t)) =
   do
     t' <- bcc t
-    let len = (length t') + 2
+    let len = (length t') + 1
     if len > 255
     then failFD4 ("Funcion muy larga: " ++ f ++ "!") -- TODO fix truncation
     else return ([FUNCTION, fromIntegral len]++t'++[RETURN, FIX])
@@ -147,8 +150,13 @@ bcc (IfZ _ c t1 t2) =
     c' <- bcc c
     t1' <- bcc t1
     t2' <- bcc t2
-
-    return (c' ++ t1' ++ t2' ++ [IFZ])
+    let lenIf = length t1'
+    let lenElse = length t2'
+    if lenIf > 255
+    then failFD4 ("Rama if muy larga!") -- TODO fix truncation
+    else if lenElse > 255
+      then failFD4 ("Rama else muy larga!") -- TODO fix truncation
+      else return (c' ++ [IFZ, fromIntegral lenIf, fromIntegral lenElse] ++ t1' ++ t2')
 bcc (Let _ n _ t1 (Sc1 t2)) =
   do
     t1' <- bcc t1
@@ -168,7 +176,7 @@ bytecompileModule (x:(_:_)) = undefined
 bytecompileModule [(Decl _ _ _ t)] =
   do
     t' <- bcc t
-    return t'
+    return (t'++[STOP])
 
 -- | Toma un bytecode, lo codifica y lo escribe un archivo
 bcWrite :: Bytecode -> FilePath -> IO ()
@@ -178,9 +186,65 @@ bcWrite bs filename = BS.writeFile filename (encode $ BC $ fromIntegral <$> bs)
 -- * Ejecución de bytecode
 ---------------------------
 
+type Env = [Val]
+
+data Val =
+    I Const
+  | Fun Env Bytecode
+  | RA Env Bytecode
+  deriving (Show, Eq)
+
 -- | Lee de un archivo y lo decodifica a bytecode
 bcRead :: FilePath -> IO Bytecode
 bcRead filename = (map fromIntegral <$> un8) . decode <$> BS.readFile filename
 
 runBC :: MonadFD4 m => Bytecode -> m ()
-runBC bc = failFD4 "implementame!"
+runBC bc = runBC' bc [] []
+
+runBC' :: MonadFD4 m => Bytecode -> Env -> [Val] -> m ()
+runBC' (NULL:bc) _ _ = undefined--failFD4 $ concat $ showOps bc
+runBC' (RETURN:_) _ (v:(RA e bc):s) = runBC' bc e (v:s)
+runBC' (CONST:x:bc) e s = runBC' bc e ((I $ CNat $ fromIntegral x):s)
+runBC' (ACCESS:i:bc) e s = runBC' bc e ((e !! (fromIntegral i)):s)
+runBC' (FUNCTION:n:bc) e s =
+  let
+    cf = take (fromIntegral n) bc
+    c = drop (fromIntegral n) bc
+  in case c of
+       (FIX:c') -> let s' = (Fun s' cf):s
+                   in runBC' c' e s'
+       otherwise -> runBC' c e ((Fun e cf):s)
+runBC' (CALL:bc) e (v:(Fun ef cf):s) = runBC' cf (v:ef) ((RA e bc):s)
+runBC' (ADD:bc) e ((I (CNat n)):(I (CNat m)):s) = runBC' bc e ((I $ CNat $ (semOp Add m n)):s)
+runBC' (SUB:bc) e ((I (CNat n)):(I (CNat m)):s) = runBC' bc e ((I $ CNat $ (semOp Sub m n)):s)
+runBC' (FIX:_) _ _ = undefined
+runBC' (STOP:_) _ _ = return ()
+runBC' (SHIFT:bc) e (v:s) = runBC' bc (v:e) s
+runBC' (DROP:bc) (v:e) s = runBC' bc e s
+runBC' (PRINT:bc) e s =
+  do
+    let (str, bc') = splitOn NULL bc
+    printFD4 $ bc2string str
+    runBC' bc' e s
+runBC' (PRINTN:bc) e ((I (CNat n)):s) =
+  do
+    printFD4 $ show n
+    runBC' bc e s
+runBC' (JUMP:bc) _ _ = failFD4 "implementame!" -- TODO que es esto?
+runBC' (IFZ:i:j:bc) e (c:s) =
+  let
+    i' = fromIntegral i
+    j' = fromIntegral j
+  in if c == (I $ CNat $ 0)
+     then runBC' ((take i' bc)++(drop (i'+j') bc)) e s
+     else runBC' (drop j' bc) e s
+
+splitOn :: Eq a => a -> [a] -> ([a], [a])
+splitOn b xs = g xs
+  where
+  g []                 = ([], [])
+  g (x:xs) | x==b      = f xs
+           | otherwise = first (x:) $ g xs
+  f []                 = ([], [])
+  f (x:xs) | x==b      = first (x:) $ f xs
+           | otherwise = ([], x:xs)
