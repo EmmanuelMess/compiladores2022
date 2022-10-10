@@ -57,7 +57,7 @@ type Name = String
 type STerm = STm Pos Ty Name -- ^ 'STm' tiene 'Name's como variables ligadas y libres y globales, guarda posición
 
 newtype Const = CNat Int
-  deriving Show
+  deriving (Show, Eq)
 
 data BinaryOp = Add | Sub
   deriving Show
