@@ -29,6 +29,7 @@ import Options.Applicative
 import Global
 import Errors
 import Lang
+import UnnameTypes
 import Parse ( P, tm, program, declOrTm, runP )
 import Elab ( elab, elabDecl )
 import Eval ( eval )
@@ -101,7 +102,7 @@ compileBytecode pathFd4 =
     decls <- loadFile pathFd4
 
     let declsTypeElab = map elabDecl decls
-    let pureDeclsElab = toPureDecls declsTypeElab
+    pureDeclsElab <- toPureDecls declsTypeElab
     let t = toTerm pureDeclsElab
     let t' = elab t
 
@@ -177,21 +178,24 @@ handleDecl d = do
         m <- getMode
         case m of
           Interactive -> do
-              decl <- typecheckDecl (elabDecl d)
+              noTypes <- (toPureDecl . elabDecl) d
+              decl <- typecheckDecl noTypes
               (case decl of
                 Decl p n ty b -> do { te <- eval b; addDecl (Decl p n ty te) }
                 DeclType _ _ _ -> addDecl decl)
           Typecheck -> do
               f <- getLastFile
               printFD4 ("Chequeando tipos de "++f)
-              td <- typecheckDecl (elabDecl d)
+              noTypes <- (toPureDecl . elabDecl) d
+              td <- typecheckDecl noTypes
               addDecl td
               -- opt <- getOpt
               -- td' <- if opt then optimize td else td
               ppterm <- ppDecl td  --td'
               printFD4 ppterm
           InteractiveCEK -> do
-              decl <- typecheckDecl (elabDecl d)
+              noTypes <- (toPureDecl . elabDecl) d
+              decl <- typecheckDecl noTypes
               (case decl of
                 Decl p n ty b -> do { te <- eval b; addDecl (Decl p n ty te) }
                 DeclType _ _ _ -> addDecl decl)
@@ -204,7 +208,7 @@ handleDecl d = do
               addDecl ed
         where
           typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
-          typecheckDecl = (tcDecl . elabSTerm)
+          typecheckDecl = tcDecl . elabSTerm
 
 elabSTerm :: Decl STerm -> Decl Term
 elabSTerm (Decl p x ty t) = Decl p x ty (elab t)
