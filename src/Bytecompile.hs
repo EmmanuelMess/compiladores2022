@@ -73,6 +73,7 @@ pattern DROP     = 12
 pattern PRINT    = 13
 pattern PRINTN   = 14
 pattern JUMP     = 15
+pattern IFZ      = 16
 
 --función util para debugging: muestra el Bytecode de forma más legible.
 showOps :: Bytecode -> [String]
@@ -94,13 +95,46 @@ showOps (PRINT:xs)       = let (msg,_:rest) = span (/=NULL) xs
                            in ("PRINT " ++ show (bc2string msg)) : showOps rest
 showOps (PRINTN:xs)      = "PRINTN" : showOps xs
 showOps (ADD:xs)         = "ADD" : showOps xs
+showOps (IFZ:xs)         = "IFZ" : showOps xs
 showOps (x:xs)           = show x : showOps xs
 
 showBC :: Bytecode -> String
 showBC = intercalate "; " . showOps
 
 bcc :: MonadFD4 m => TTerm -> m Bytecode
-bcc t = failFD4 "implementame!"
+bcc (V _ (Bound i)) = return [ACCESS, i]
+bcc (V _ (Free _)) = undefined
+bcc (V _ (Global _)) = undefined
+bcc (Const _ (CNat v)) = return [CONST, v]
+bcc (Lam _ f _ s) = failFD4 "implementame!"
+bcc (App _ t1 t2) = failFD4 "implementame!"
+bcc (Print _ str t) =
+  do
+    t' <- bcc t
+    return (t' ++ [PRINTN]) -- TODO fix
+bcc (BinaryOp _ op t1 t2) =
+  do
+    t1' <- bcc t1
+    t2' <- bcc t2
+
+    let opcode = case op of
+                   Add -> ADD
+                   Sub -> SUB
+    return (t1' ++ t2' ++ [opcode])
+bcc (Fix _ name _ f _ s) = failFD4 "implementame!"
+bcc (IfZ _ c t1 t2) =
+  do
+    c' <- bcc c
+    t1' <- bcc t1
+    t2' <- bcc t2
+
+    return (c' ++ t1' ++ t2' ++ [IFZ])
+bcc (Let _ n _ t1 (Sc1 t2)) =
+  do
+    t1' <- bcc t1
+    t2' <- bcc t2
+
+    return (t1' ++ [SHIFT] ++ t2' ++ [DROP])
 
 -- ord/chr devuelven los codepoints unicode, o en otras palabras
 -- la codificación UTF-32 del caracter.
@@ -111,7 +145,12 @@ bc2string :: Bytecode -> String
 bc2string = map chr
 
 bytecompileModule :: MonadFD4 m => Module -> m Bytecode
-bytecompileModule m = failFD4 "implementame!"
+bytecompileModule [] = undefined
+bytecompileModule (x:(_:_)) = undefined
+bytecompileModule [(Decl _ _ _ t)] =
+  do
+    t' <- bcc t
+    return t'
 
 -- | Toma un bytecode, lo codifica y lo escribe un archivo
 bcWrite :: Bytecode -> FilePath -> IO ()

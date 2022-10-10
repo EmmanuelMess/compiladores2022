@@ -23,7 +23,7 @@ import Control.Exception ( catch , IOException )
 import System.IO ( hPrint, stderr, hPutStrLn )
 import Data.Maybe ( fromMaybe )
 
-import System.Exit ( exitWith, ExitCode(ExitFailure, ExitSuccess) )
+import System.Exit ( exitWith, ExitCode(ExitFailure) )
 import Options.Applicative
 
 import Global
@@ -98,10 +98,21 @@ compileBytecode :: MonadFD4 m => FilePath -> m ()
 compileBytecode pathFd4 =
   do
     decls <- loadFile pathFd4
-    checkedDecls <- mapM (\d -> typecheckDecl (elabDecl d)) decls
-    bytecode <- bytecompileModule checkedDecls
+
+    let declsTypeElab = map elabDecl decls
+    let pureDeclsElab = toPureDecls declsTypeElab
+    let t = toTerm pureDeclsElab
+    let t' = elab t
+
+    let lastDecl = last pureDeclsElab
+    let newDecl = Decl (declPos lastDecl) (declName lastDecl) (declBodyType lastDecl) t'
+
+    d' <- tcDecl newDecl
+
+    bytecode <- bytecompileModule [d']
     let pathBc = pathFd4 ++ ".bc"
     liftIO $ bcWrite bytecode pathBc
+    liftIO $ putStrLn $ showBC bytecode
     return ()
 
 runBytecode :: MonadFD4 m => FilePath -> m ()
@@ -177,11 +188,13 @@ handleDecl d = do
                 DeclType _ _ _ -> addDecl decl)
           Bytecompile -> undefined -- No lidia con decl
           RunVM -> undefined -- No se ejecuta aca
+        where
+          typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
+          typecheckDecl = (tcDecl . elabSTerm)
 
-typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
-typecheckDecl (Decl p x ty t) = tcDecl (Decl p x ty (elab t))
-typecheckDecl (DeclType a b c) = tcDecl (DeclType a b c) -- TODO fix
-
+elabSTerm :: Decl STerm -> Decl Term
+elabSTerm (Decl p x ty t) = Decl p x ty (elab t)
+elabSTerm (DeclType a b c) = DeclType a b c-- TODO fix
 
 data Command = Compile CompileForm
              | PPrint String
