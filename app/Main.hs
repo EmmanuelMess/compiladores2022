@@ -103,7 +103,7 @@ compileBytecode pathFd4 =
 
     let declsTypeElab = map elabDecl decls
     pureDeclsElab <- toPureDecls declsTypeElab
-    let t = toTerm pureDeclsElab
+    let t = toTerm pureDeclsElab -- TODO Check names aren't repeated before
     let t' = elab t
 
     let lastDecl = last pureDeclsElab

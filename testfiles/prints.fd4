@@ -1,0 +1,3 @@
+let x: Nat = print "" 5
+let y: Nat = print "你好,你怎么样?" 5
+let z: Nat = print "你好,你怎么样?مرحبا، كيف حالك" x
