@@ -2,3 +2,4 @@ let x: Nat = 4
 type A = Nat
 let y: A = 5
 let z: Nat = x + y
+let k: Nat = ifz 0 then 5 else z
