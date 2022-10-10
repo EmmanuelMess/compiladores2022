@@ -1,3 +1,4 @@
 let x: Nat = 4
-let y: Nat = 5
+type A = Nat
+let y: A = 5
 let z: Nat = x + y

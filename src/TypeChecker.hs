@@ -9,8 +9,7 @@ Stability   : experimental
 -}
 module TypeChecker (
    tc,
-   tcDecl,
-   unnameTy
+   tcDecl
    ) where
 
 import Common
@@ -98,11 +97,9 @@ expect ty tt =
   do
     let ty' = getTy tt
     let p = getPos tt
-    tya <- unnameTy p ty
-    tyb <- unnameTy p ty'
     doc <- ppTy ty
     doc' <- ppTy ty'
-    if tya == tyb
+    if ty == ty'
       then return tt
       else typeError tt $  "Tipo esperado: "++doc++"\npero se obtuvo: "++doc'
 
@@ -111,7 +108,7 @@ expect ty tt =
 domCod :: MonadFD4 m => TTerm -> m (Ty, Ty)
 domCod tt =
   do
-    ty <- unnameTy (getPos tt) (getTy tt)
+    let ty = getTy tt
     (case ty of
       FunTy d c -> return (d, c)
       _         -> do
@@ -136,7 +133,6 @@ tcDecl (DeclType p n ty) =
   do
     --chequear si el nombre ya está declarado
     mty <- lookupTy n
-    ty' <- unnameTy p ty
     case mty of
-        False -> return (DeclType p n ty') --no está declarado
+        False -> return (DeclType p n ty) --no está declarado
         True -> failPosFD4 p $ n ++" ya está declarado"

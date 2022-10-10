@@ -160,13 +160,6 @@ freeVars tm = nubSort $ go tm [] where
   go (Const _ _               ) xs = xs
   go (Let _ _ _ e (Sc1 t)     ) xs = go e (go t xs)
 
-toPureDecls :: [Decl a] -> [Decl a]
-toPureDecls m =
-  let
-    f (Decl _ _ _ _) = True
-    f (DeclType _ _ _) = False
-  in filter f m
-
 toTerm :: [Decl STerm] -> STerm
 toTerm ((Decl p1 n1 ty1 t1):[]) = t1 -- El name no se usa nunca más
 toTerm ((Decl p1 n1 ty1 t1):(next@(_:_))) = SLet p1 (n1, ty1) t1 (toTerm next)
