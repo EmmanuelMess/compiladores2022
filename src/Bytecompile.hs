@@ -20,28 +20,31 @@ import Subst
 import MonadFD4
 
 import qualified Data.ByteString.Lazy as BS
-import Data.Binary ( Word32, Binary(put, get), decode, encode )
-import Data.Binary.Put ( putWord32le )
-import Data.Binary.Get ( getWord32le, isEmpty )
+import qualified Data.ByteString as B
+import Data.Binary ( Word8, Binary(put, get), decode, encode )
+import Data.Binary.Put ( putWord8 )
+import Data.Binary.Get ( getWord8, isEmpty )
 
 import Data.List (intercalate)
+import Data.Text.Encoding
 import Data.Char
+import qualified Data.Text as T
 
-type Opcode = Int
-type Bytecode = [Int]
+type Opcode = Word8
+type Bytecode = [Word8]
 
-newtype Bytecode32 = BC { un32 :: [Word32] }
+newtype Bytecode8 = BC { un8 :: [Word8] }
 
-{- Esta instancia explica como codificar y decodificar Bytecode de 32 bits -}
-instance Binary Bytecode32 where
-  put (BC bs) = mapM_ putWord32le bs
+{- Esta instancia explica como codificar y decodificar Bytecode de 8 bits -}
+instance Binary Bytecode8 where
+  put (BC bs) = mapM_ putWord8 bs
   get = go
     where go =
            do
             empty <- isEmpty
             if empty
               then return $ BC []
-              else do x <- getWord32le
+              else do x <- getWord8
                       BC xs <- go
                       return $ BC (x:xs)
 
@@ -102,16 +105,27 @@ showBC :: Bytecode -> String
 showBC = intercalate "; " . showOps
 
 bcc :: MonadFD4 m => TTerm -> m Bytecode
-bcc (V _ (Bound i)) = return [ACCESS, i]
+bcc (V _ (Bound i)) = return [ACCESS, fromIntegral i] -- TODO fix truncation
 bcc (V _ (Free _)) = undefined
 bcc (V _ (Global _)) = undefined
-bcc (Const _ (CNat v)) = return [CONST, v]
-bcc (Lam _ f _ s) = failFD4 "implementame!"
-bcc (App _ t1 t2) = failFD4 "implementame!"
+bcc (Const _ (CNat v)) = return [CONST, fromIntegral v] -- TODO fix truncation
+bcc (Lam _ f _ (Sc1 t)) =
+  do
+    t' <- bcc t
+    let len = (length t') + 1
+    if len > 255
+    then failFD4 ("Funcion muy larga: " ++ f ++ "!") -- TODO fix truncation
+    else return ([FUNCTION, fromIntegral len]++t'++[RETURN])
+bcc (App _ t1 t2) =
+  do
+    t1' <- bcc t1
+    t2' <- bcc t2
+    return (t1'++t2'++[CALL])
 bcc (Print _ str t) =
   do
     t' <- bcc t
-    return (t' ++ [PRINTN]) -- TODO fix
+    let serialStr = string2bc str
+    return ([PRINT]++serialStr++[NULL]++t'++[PRINTN])
 bcc (BinaryOp _ op t1 t2) =
   do
     t1' <- bcc t1
@@ -121,7 +135,13 @@ bcc (BinaryOp _ op t1 t2) =
                    Add -> ADD
                    Sub -> SUB
     return (t1' ++ t2' ++ [opcode])
-bcc (Fix _ name _ f _ s) = failFD4 "implementame!"
+bcc (Fix _ name _ f _ (Sc2 t)) =
+  do
+    t' <- bcc t
+    let len = (length t') + 2
+    if len > 255
+    then failFD4 ("Funcion muy larga: " ++ f ++ "!") -- TODO fix truncation
+    else return ([FUNCTION, fromIntegral len]++t'++[RETURN, FIX])
 bcc (IfZ _ c t1 t2) =
   do
     c' <- bcc c
@@ -136,13 +156,11 @@ bcc (Let _ n _ t1 (Sc1 t2)) =
 
     return (t1' ++ [SHIFT] ++ t2' ++ [DROP])
 
--- ord/chr devuelven los codepoints unicode, o en otras palabras
--- la codificación UTF-32 del caracter.
 string2bc :: String -> Bytecode
-string2bc = map ord
+string2bc = B.unpack . encodeUtf8 . T.pack
 
 bc2string :: Bytecode -> String
-bc2string = map chr
+bc2string = T.unpack . decodeUtf8 . B.pack
 
 bytecompileModule :: MonadFD4 m => Module -> m Bytecode
 bytecompileModule [] = undefined
@@ -162,7 +180,7 @@ bcWrite bs filename = BS.writeFile filename (encode $ BC $ fromIntegral <$> bs)
 
 -- | Lee de un archivo y lo decodifica a bytecode
 bcRead :: FilePath -> IO Bytecode
-bcRead filename = (map fromIntegral <$> un32) . decode <$> BS.readFile filename
+bcRead filename = (map fromIntegral <$> un8) . decode <$> BS.readFile filename
 
 runBC :: MonadFD4 m => Bytecode -> m ()
 runBC bc = failFD4 "implementame!"
