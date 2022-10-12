@@ -1,2 +1,2 @@
-let rec gcd (m: Nat) (n: Nat): Nat = ifz n then m else ifz m then n else ifz (m - (n+1)) then gcd m (m - n) else gcd (m-n) n
-let e: Nat = gcd 6 3
+let rec fac (m: Nat): Nat = ifz m then m else m + fac(m - 1)
+let e: Nat = print "a=" (fac 2)
