@@ -238,6 +238,12 @@ runBC' (IFZ:i:j:bc) e (c:s) =
   in if c == (I $ CNat $ 0)
      then runBC' ((take i' bc)++(drop (i'+j') bc)) e s
      else runBC' (drop j' bc) e s
+runBC' bc e s =
+  do
+    printFD4 "Failure in VM"
+    printFD4 $ "code "++showBC bc
+    printFD4 $ "env "++show e
+    printFD4 $ "stack "++show s
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
 splitOn b xs = g xs
