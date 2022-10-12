@@ -192,7 +192,12 @@ data Val =
     I Const
   | Fun Env Bytecode
   | RA Env Bytecode
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show Val where
+  show (I c) = "I ("++show c++")"
+  show (Fun e bc) = "Fun ("++showBC bc++")"
+  show (RA e bc) = "RA ("++showBC bc++")"
 
 -- | Lee de un archivo y lo decodifica a bytecode
 bcRead :: FilePath -> IO Bytecode
@@ -201,8 +206,16 @@ bcRead filename = (map fromIntegral <$> un8) . decode <$> BS.readFile filename
 runBC :: MonadFD4 m => Bytecode -> m ()
 runBC bc = runBC' bc [] []
 
+printState :: MonadFD4 m => String -> Bytecode -> Env -> [Val] -> m ()
+printState str bc e s =
+  do
+    printFD4 $ str
+    printFD4 $ "code "++showBC bc
+    printFD4 $ "env "++show e
+    printFD4 $ "stack "++show s
+
 runBC' :: MonadFD4 m => Bytecode -> Env -> [Val] -> m ()
-runBC' (NULL:bc) _ _ = undefined--failFD4 $ concat $ showOps bc
+-- runBC' (NULL:bc) _ _ = undefined
 runBC' (RETURN:_) _ (v:(RA e bc):s) = runBC' bc e (v:s)
 runBC' (CONST:x:bc) e s = runBC' bc e ((I $ CNat $ fromIntegral x):s)
 runBC' (ACCESS:i:bc) e s = runBC' bc e ((e !! (fromIntegral i)):s)
@@ -230,20 +243,15 @@ runBC' (PRINTN:bc) e ((I (CNat n)):s) =
   do
     printFD4 $ show n
     runBC' bc e s
-runBC' (JUMP:bc) _ _ = failFD4 "implementame!" -- TODO que es esto?
-runBC' (IFZ:i:j:bc) e (c:s) =
+-- runBC' (JUMP:bc) _ _ = undefined
+runBC' (IFZ:lenIf:lenElse:bc) e (c:s) =
   let
-    i' = fromIntegral i
-    j' = fromIntegral j
+    lenIf' = fromIntegral lenIf
+    lenElse' = fromIntegral lenElse
   in if c == (I $ CNat $ 0)
-     then runBC' ((take i' bc)++(drop (i'+j') bc)) e s
-     else runBC' (drop j' bc) e s
-runBC' bc e s =
-  do
-    printFD4 "Failure in VM"
-    printFD4 $ "code "++showBC bc
-    printFD4 $ "env "++show e
-    printFD4 $ "stack "++show s
+     then runBC' ((take lenIf' bc)++(drop (lenIf'+lenElse') bc)) e s
+     else runBC' (drop lenIf' bc) e s
+runBC' bc e s = printState "Failure in VM" bc e s
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
 splitOn b xs = g xs
