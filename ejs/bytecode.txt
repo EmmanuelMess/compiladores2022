@@ -1,0 +1,93 @@
+e)
+ack 3 11 FD4 toma 7min 49s
+ack 3 11 C   toma 0min  0,5s
+
+El archivo Bytecompile compila a 16000 lineas, lo cual quiere decir que _cada_ instruccion FD4 ejecuta ~1000 instrucciones ASM,
+contra las 43 totales para el assembly de C.
+
+El ack de FD4 tiene 42 instrucciones, lo cual traduce a ~42000 lineas de assembly, lo cual nos da 3 ordenes de magnitud
+de diferencia, que explica la diferencia entre 0.5s y 469s.
+
+
+Programa en C:
+    #include <stdio.h>
+
+    int ack(int x, int y) {
+        if(x == 0) return y + 1;
+        if(y == 0) return ack(x-1, 1);
+        return ack(x-1, ack(x,y-1));
+    }
+
+    int main() {
+        printf("%d", ack(3, 11));
+    }
+
+    Compilado a asm x86 -O0:
+    ack:
+            push    {r4, fp, lr}
+            add     fp, sp, #8
+            sub     sp, sp, #12
+            str     r0, [fp, #-16]
+            str     r1, [fp, #-20]
+            ldr     r3, [fp, #-16]
+            cmp     r3, #0
+            bne     .L2
+            ldr     r3, [fp, #-20]
+            add     r3, r3, #1
+            b       .L3
+    .L2:
+            ldr     r3, [fp, #-20]
+            cmp     r3, #0
+            bne     .L4
+            ldr     r3, [fp, #-16]
+            sub     r3, r3, #1
+            mov     r1, #1
+            mov     r0, r3
+            bl      ack
+            mov     r3, r0
+            b       .L3
+    .L4:
+            ldr     r3, [fp, #-16]
+            sub     r4, r3, #1
+            ldr     r3, [fp, #-20]
+            sub     r3, r3, #1
+            mov     r1, r3
+            ldr     r0, [fp, #-16]
+            bl      ack
+            mov     r3, r0
+            mov     r1, r3
+            mov     r0, r4
+            bl      ack
+            mov     r3, r0
+    .L3:
+            mov     r0, r3
+            sub     sp, fp, #8
+            pop     {r4, fp, lr}
+            bx      lr
+    .LC0:
+            .ascii  "%d\000"
+    main:
+            push    {fp, lr}
+            add     fp, sp, #4
+            mov     r1, #11
+            mov     r0, #3
+            bl      ack
+            mov     r3, r0
+            mov     r1, r3
+            ldr     r0, .L7
+            bl      printf
+            mov     r3, #0
+            mov     r0, r3
+            sub     sp, fp, #4
+            pop     {fp, lr}
+            bx      lr
+    .L7:
+            .word   .LC0
+
+Programa en Haskell es el proyecto.
+
+    Compilando con:
+
+    stack ghc -- -O0 -ddump-asm app/Main.hs src/Bytecompile.hs src/CEK.hs src/Common.hs src/Elab.hs src/Errors.hs src/Eval.hs src/Global.hs src/Lang.hs src/MonadFD4.hs src/Parse.hs src/PPrint.hs src/Subst.hs src/TypeChecker.hs src/UnnameTypes.hs
+
+    ver Bytecompile.hs
