@@ -38,6 +38,7 @@ enum {
 	PRINTN   = 14,
 	CJUMP    = 15,
 	TAILCALL = 16,
+	IFZ      = 17,
 };
 
 #define quit(...)							\
@@ -103,6 +104,18 @@ static inline env env_push(env e, value v)
 	new->v = v;
 	new->next = e;
 	return new;
+}
+
+/*
+ * Devuelve un valor del entorno `e`.
+ */
+static inline value env_get(const env e, const unsigned int n)
+{
+    env envStep = e;
+    for(unsigned int i = 0; i < n; i++) {
+        envStep = envStep->next;
+    }
+	return envStep->v;
 }
 
 /*
@@ -194,8 +207,8 @@ void run(code init_c)
 		/* Consumimos un opcode y lo inspeccionamos. */
 		switch(*c++) {
 		case ACCESS: {
-			/* implementame */
-			abort();
+			(*s++).i = env_get(e, *c++).i;
+			break;
 		}
 
 		case CONST: {
@@ -325,13 +338,14 @@ void run(code init_c)
 		}
 
 		case SHIFT: {
-			/* implementame */
-			abort();
+		    value v = *--s;
+		    e = env_push(e, v);
+			break;
 		}
 
 		case DROP: {
-			/* implementame */
-			abort();
+		    e = e->next;
+			break;
 		}
 
 		case PRINTN: {
@@ -346,6 +360,21 @@ void run(code init_c)
 				putwchar(wc);
 
 			break;
+		}
+
+		case IFZ: {
+		    const int lenIf = *c++;
+		    const int lenElse = *c++;
+
+		    if((*--s).i == 0) {
+		        for(long i = lenIf + lenElse - 1, j = lenIf - 1; j >= 0; i--, j--) {
+                    *(c+i) = *(c+j);
+		        }
+
+		        c += lenElse;
+		    } else {
+		        c += lenIf;
+		    }
 		}
 
 		default:
