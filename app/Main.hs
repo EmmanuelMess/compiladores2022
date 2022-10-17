@@ -103,7 +103,10 @@ compileBytecode pathFd4 =
 
     let declsTypeElab = map elabDecl decls
     pureDeclsElab <- toPureDecls declsTypeElab
-    let t = toTerm pureDeclsElab -- TODO Check names aren't repeated before
+
+    mapM_ tcAndAdd (init pureDeclsElab)
+
+    let t = toTerm pureDeclsElab
     let t' = elab t
 
     let lastDecl = last pureDeclsElab
@@ -116,6 +119,15 @@ compileBytecode pathFd4 =
     liftIO $ bcWrite bytecode pathBc
     liftIO $ putStrLn $ showBC bytecode
     return ()
+  where
+    tcAndAdd :: MonadFD4 m => Decl STerm -> m ()
+    tcAndAdd d =
+      case d of
+        Decl _ _ _ _ ->
+          do
+            d' <- typecheckDecl d
+            addDecl d'
+        DeclType _ _ _ -> undefined -- toPureDecls ya lo elimina
 
 runBytecode :: MonadFD4 m => FilePath -> m ()
 runBytecode pathBc =
@@ -206,9 +218,9 @@ handleDecl d = do
               -- td' <- if opt then optimizeDecl td else return td
               ed <- evalDecl td
               addDecl ed
-        where
-          typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
-          typecheckDecl = tcDecl . elabSTerm
+
+typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
+typecheckDecl = tcDecl . elabSTerm
 
 elabSTerm :: Decl STerm -> Decl Term
 elabSTerm (Decl p x ty t) = Decl p x ty (elab t)
