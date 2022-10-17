@@ -115,7 +115,7 @@ compileBytecode pathFd4 =
     d' <- tcDecl newDecl
 
     bytecode <- bytecompileModule [d']
-    let pathBc = pathFd4 ++ ".bc"
+    let pathBc = (take (length pathFd4 - 3)  pathFd4) ++ "bc"
     liftIO $ bcWrite bytecode pathBc
     liftIO $ putStrLn $ showBC bytecode
     return ()
