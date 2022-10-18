@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -15,11 +16,11 @@
 #define STATIC_ASSERT(p)			\
 	void _ass_ ## __FILE__ ## __LINE__ (char v[(p) ? 1 : -1])
 
-/* Necesitamos que un uint32_t (i.e. una instrucción) entre en un int. */
-STATIC_ASSERT(sizeof (int) >= sizeof (uint32_t));
+/* Necesitamos que un uint8_t (i.e. una instrucción) entre en un int. */
+STATIC_ASSERT(sizeof (int) >= sizeof (uint8_t));
 
 /* Habilitar impresión de traza? */
-#define TRACE 0
+#define TRACE false
 
 enum {
 	RETURN   = 1,
@@ -56,7 +57,7 @@ enum {
  * recorre opcode a opcode operando en la stack. Las más interesantes
  * involucran saltos y la construcción de clausuras.
  */
-typedef uint32_t *code;
+typedef uint8_t *code;
 
 /*
  * Un entorno es una lista enlazada de valores. Representan los valores
@@ -80,7 +81,7 @@ struct clo {
  * de chequeo en runtime.
  */
 union value {
-	uint32_t i;
+	uint8_t i;
 	struct clo clo;
 };
 typedef union value value;
@@ -109,7 +110,7 @@ static inline env env_push(env e, value v)
 /*
  * Devuelve un valor del entorno `e`.
  */
-static inline value env_get(const env e, const unsigned int n)
+static inline value env_get(env e, const unsigned int n)
 {
     env envStep = e;
     for(unsigned int i = 0; i < n; i++) {
@@ -171,7 +172,7 @@ void run(code init_c)
 	 * Que es igual a s = s - 1; v = *s
 	 */
 
-	while (1) {
+	while (true) {
 		/* Si se llenó la pila, duplicamos su tamaño. */
 		if (s == stack + stack_size) {
 			int offset = s - stack;
@@ -222,8 +223,8 @@ void run(code init_c)
 			 * Suma: desapilamos los dos operandos, sumamos,
 			 * y apilamos el resultado.
 			 */
-			uint32_t y = (*--s).i;
-			uint32_t x = (*--s).i;
+			uint8_t y = (*--s).i;
+			uint8_t x = (*--s).i;
 			(*s++).i = x+y;
 			break;
 		}
@@ -233,8 +234,8 @@ void run(code init_c)
 			 * Resta: ya tenemos los valores en el tope de la pila,
 			 * hacemos la resta solo si x > y, sino es 0.
 			 */
-			uint32_t y = (*--s).i;
-			uint32_t x = (*--s).i;
+			uint8_t y = (*--s).i;
+			uint8_t x = (*--s).i;
 			(*s++).i = x > y ? x-y : 0;
 			break;
 		}
@@ -349,7 +350,7 @@ void run(code init_c)
 		}
 
 		case PRINTN: {
-			uint32_t i = s[-1].i;
+			uint8_t i = s[-1].i;
 			wprintf(L"%" PRIu32 "\n", i);
 			break;
 		}
@@ -375,6 +376,7 @@ void run(code init_c)
 		    } else {
 		        c += lenIf;
 		    }
+			break;
 		}
 
 		default:
