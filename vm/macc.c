@@ -364,17 +364,12 @@ void run(code init_c)
 		}
 
 		case IFZ: {
-		    const int lenIf = *c++;
-		    const int lenElse = *c++;
-
-		    if((*--s).i == 0) {
-		        for(long i = lenIf + lenElse - 1, j = lenIf - 1; j >= 0; i--, j--) {
-                    *(c+i) = *(c+j);
-		        }
-
-		        c += lenElse;
+		    const int lenIf;
+		    if(!(*--s).i) {
+		       c++;
+		        
 		    } else {
-		        c += lenIf;
+		        c += (*c++);
 		    }
 			break;
 		}
