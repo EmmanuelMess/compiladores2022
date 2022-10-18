@@ -42,6 +42,8 @@ enum {
 	IFZ      = 17,
 };
 
+const char* instNames[] = {"NULL", "RETURN", "CONST", "ACCESS", "FUNCTION", "CALL", "ADD", "SUB", "JUMP", "FIX", "STOP", "SHIFT", "DROP", "PRINT", "PRINTN", "CJUMP", "TAILCALL", "IFZ"    };
+
 #define quit(...)							\
 	do {								\
 		fprintf(stderr, __VA_ARGS__);				\
@@ -192,13 +194,36 @@ void run(code init_c)
 			code cc;
 			fprintf(stderr, "code offset = %li\n", c - init_c);
 			fprintf(stderr, "code -> [");
-			for (cc = c; n < 20 && *cc != STOP; n++, cc++) {
-				fprintf(stderr, "%i ", *cc);
+			for (cc = c; n < 500 && *cc != STOP; n++, cc++) {
+				fprintf(stderr, "%s ", instNames[*cc]);
+				switch(*cc) {
+				    case CONST:
+				    case ACCESS:
+				    case FUNCTION:
+				    case JUMP: {
+                        fprintf(stderr, "%i ", *++cc);
+                        n++;
+                        break;
+				    }
+				    case IFZ: {
+				        fprintf(stderr, "%i %i ", *++cc, *++cc);
+				        n += 2;
+				        break;
+				    }
+				    case PRINT: {
+				        while(*++cc) {
+				            fprintf(stderr, "%c ", *cc);
+				            n++;
+				        }
+				        --cc;
+				        break;
+				    }
+				}
 			}
-			if (n == 20)
+			if (n >= 500)
 				fprintf(stderr, "...]\n");
 			else
-				fprintf(stderr, "%i]\n", STOP);
+				fprintf(stderr, "%s]\n", instNames[STOP]);
 
 			fprintf(stderr, "*c = %d\n", *c);
 			fprintf(stderr, "|s| = %ld\n", s - stack);
