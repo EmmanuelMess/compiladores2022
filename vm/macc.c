@@ -20,7 +20,7 @@
 STATIC_ASSERT(sizeof (int) >= sizeof (uint8_t));
 
 /* Habilitar impresión de traza? */
-#define TRACE false
+#define TRACE true
 
 enum {
 	RETURN   = 1,
@@ -200,15 +200,12 @@ void run(code init_c)
 				    case CONST:
 				    case ACCESS:
 				    case FUNCTION:
-				    case JUMP: {
+				    case IFZ:
+				    case JUMP:
+				    case CJUMP: {
                         fprintf(stderr, "%i ", *++cc);
                         n++;
                         break;
-				    }
-				    case IFZ: {
-				        fprintf(stderr, "%i %i ", *++cc, *++cc);
-				        n += 2;
-				        break;
 				    }
 				    case PRINT: {
 				        while(*++cc) {
@@ -311,6 +308,12 @@ void run(code init_c)
 			abort();
 		}
 
+        case CJUMP: {
+            const int n = *c++;
+            c += n;
+            break;
+        }
+
 		case FUNCTION: {
 			/*
 			 * Un lambda, es un valor! Armamos una clausura
@@ -390,15 +393,9 @@ void run(code init_c)
 
 		case IFZ: {
 		    const int lenIf = *c++;
-		    const int lenElse = *c++;
 
-// Para testear https://godbolt.org/#g:!((g:!((g:!((h:codeEditor,i:(filename:example.hs,fontScale:14,fontUsePx:'0',j:1,lang:___c,selection:(endColumn:2,endLineNumber:22,positionColumn:2,positionLineNumber:22,selectionStartColumn:2,selectionStartLineNumber:22,startColumn:2,startLineNumber:22),source:'%23include+%3Cstdio.h%3E%0A%23include+%3Cstdlib.h%3E%0A%0Aint+main()+%7B%0A++++int+lenIf+%3D+5%3B%0A++++int+lenElse+%3D+5%3B%0A%0A++++char+*s+%3D+calloc(50,+sizeof(char))%3B%0A++++for(int+i+%3D+0,+j+%3D+!'a!'%3B+i+%3C+30%3B+i%2B%2B,+j%2B%2B)+%7B%0A++++++++s%5Bi%5D+%3D+j%3B%0A++++%7D%0A%0A++++printf(%22%25s%5Cn%22,+s)%3B%0A%0A++++for(long+i+%3D+lenIf+%2B+lenElse+-+1,+j+%3D+lenIf+-+1%3B+j+%3E%3D+0%3B+i--,+j--)+%7B%0A++++++++*(s%2Bi)+%3D+*(s%2Bj)%3B%0A%09%7D%0A%0A++++s+%2B%3D+lenElse%3B+%0A%0A++++printf(%22%25s%5Cn%22,+s)%3B%0A%7D'),l:'5',n:'0',o:example.hs,t:'0')),k:50,l:'4',n:'0',o:'',s:0,t:'0'),(g:!((g:!((h:compiler,i:(compiler:cg122,filters:(b:'0',binary:'1',commentOnly:'0',demangle:'0',directives:'0',execute:'0',intel:'0',libraryCode:'0',trim:'1'),flagsViewOpen:'1',fontScale:14,fontUsePx:'0',j:1,lang:___c,libs:!(),options:'',selection:(endColumn:1,endLineNumber:1,positionColumn:1,positionLineNumber:1,selectionStartColumn:1,selectionStartLineNumber:1,startColumn:1,startLineNumber:1),source:1,tree:'1'),l:'5',n:'0',o:'x86-64+gcc+12.2+(C,+Editor+%231,+Compiler+%231)',t:'0')),k:50,l:'4',m:50,n:'0',o:'',s:0,t:'0'),(g:!((h:output,i:(compilerName:'x86-64+ghc+9.2.2',editorid:1,fontScale:14,fontUsePx:'0',j:1,wrap:'1'),l:'5',n:'0',o:'Output+of+x86-64+gcc+12.2+(Compiler+%231)',t:'0')),header:(),l:'4',m:50,n:'0',o:'',s:0,t:'0')),k:50,l:'3',n:'0',o:'',t:'0')),l:'2',n:'0',o:'',t:'0')),version:4
 		    if((*--s).i == 0) {
-		        for(long i = lenIf + lenElse - 1, j = lenIf - 1; j >= 0; i--, j--) {
-                    *(c+i) = *(c+j);
-		        }
-
-		        c += lenElse;
+		        // Nada
 		    } else {
 		        c += lenIf;
 		    }
