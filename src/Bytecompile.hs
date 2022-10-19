@@ -102,7 +102,7 @@ showOps (PRINT:xs)       = let (msg,_:rest) = span (/=NULL) xs
                            in ("PRINT " ++ show (bc2string msg)) : showOps rest
 showOps (PRINTN:xs)      = "PRINTN" : showOps xs
 showOps (ADD:xs)         = "ADD" : showOps xs
-showOps (IFZ:i:j:xs)     = ("IFZ endif="++(show i)++" endelse="++(show j)) : showOps xs
+showOps (IFZ:i:xs)     = ("IFZ endif="++(show i)) : showOps xs
 showOps (x:xs)           = show x : showOps xs
 
 showBC :: Bytecode -> String
@@ -151,13 +151,13 @@ bcc (IfZ _ c t1 t2) =
     c' <- bcc c
     t1' <- bcc t1
     t2' <- bcc t2
-    let lenIf = length t1'
+    let lenIf = length t1' + 2
     let lenElse = length t2'
     if lenIf > 255
     then failFD4 ("Rama if muy larga!") -- TODO fix truncation
     else if lenElse > 255
       then failFD4 ("Rama else muy larga!") -- TODO fix truncation
-      else return (c' ++ [IFZ, fromIntegral lenIf, fromIntegral lenElse] ++ t1' ++ t2')
+      else return (c' ++ [IFZ, fromIntegral lenIf] ++ t1' ++ [JUMP, fromIntegral lenElse] ++ t2')
 bcc (Let _ n _ t1 (Sc1 t2)) =
   do
     t1' <- bcc t1
@@ -244,13 +244,12 @@ runBC' (PRINTN:bc) e ((I (CNat n)):s) =
   do
     printFD4 $ show n
     runBC' bc e s
--- runBC' (JUMP:bc) _ _ = undefined
-runBC' (IFZ:lenIf:lenElse:bc) e (c:s) =
+runBC' (JUMP:n:bc) e s = runBC' (drop (fromIntegral n) bc) e s
+runBC' (IFZ:lenIf:bc) e (c:s) =
   let
     lenIf' = fromIntegral lenIf
-    lenElse' = fromIntegral lenElse
   in if c == (I $ CNat $ 0)
-     then runBC' ((take lenIf' bc)++(drop (lenIf'+lenElse') bc)) e s
+     then runBC' bc e s
      else runBC' (drop lenIf' bc) e s
 runBC' bc e s = printState "Failure in VM" bc e s
 
