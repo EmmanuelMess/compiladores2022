@@ -102,7 +102,8 @@ showOps (PRINT:xs)       = let (msg,_:rest) = span (/=NULL) xs
                            in ("PRINT " ++ show (bc2string msg)) : showOps rest
 showOps (PRINTN:xs)      = "PRINTN" : showOps xs
 showOps (ADD:xs)         = "ADD" : showOps xs
-showOps (IFZ:i:xs)     = ("IFZ endif="++(show i)) : showOps xs
+showOps (TAILCALL:xs)    = "TAILCALL" : showOps xs
+showOps (IFZ:i:xs)       = ("IFZ endif="++(show i)) : showOps xs
 showOps (x:xs)           = show x : showOps xs
 
 showBC :: Bytecode -> String
@@ -115,11 +116,11 @@ bcc (V _ (Global _)) = undefined
 bcc (Const _ (CNat v)) = return [CONST, fromIntegral v] -- TODO fix truncation
 bcc (Lam _ f _ (Sc1 t)) =
   do
-    t' <- bcc t
-    let len = (length t') + 1
+    t' <- bcct t
+    let len = length t'
     if len > 255
     then failFD4 ("Funcion muy larga: " ++ f ++ "!") -- TODO fix truncation
-    else return ([FUNCTION, fromIntegral len]++t'++[RETURN])
+    else return ([FUNCTION, fromIntegral len]++t')
 bcc (App _ t1 t2) =
   do
     t1' <- bcc t1
@@ -164,6 +165,29 @@ bcc (Let _ n _ t1 (Sc1 t2)) =
     t2' <- bcc t2
 
     return (t1' ++ [SHIFT] ++ t2' ++ [DROP])
+
+bcct :: MonadFD4 m => TTerm -> m Bytecode
+bcct (App _ t1 t2) =
+  do
+    t1' <- bcc t1
+    t2' <- bcc t2
+    return (t1'++t2'++[TAILCALL])
+bcct (IfZ _ c t1 t2) =
+  do
+    c' <- bcc c
+    t1' <- bcct t1
+    t2' <- bcct t2
+    let lenIf = length t1' + 2
+    let lenElse = length t2'
+    if lenIf > 255
+    then failFD4 ("Rama if muy larga!") -- TODO fix truncation
+    else if lenElse > 255
+      then failFD4 ("Rama else muy larga!") -- TODO fix truncation
+      else return (c' ++ [IFZ, fromIntegral lenIf] ++ t1' ++ [JUMP, fromIntegral lenElse] ++ t2')
+bcct t =
+  do
+    t' <- bcc t
+    return (t'++[RETURN])
 
 string2bc :: String -> Bytecode
 string2bc = B.unpack . encodeUtf8 . T.pack
@@ -245,6 +269,7 @@ runBC' (PRINTN:bc) e ((I (CNat n)):s) =
     printFD4 $ show n
     runBC' bc e s
 runBC' (JUMP:n:bc) e s = runBC' (drop (fromIntegral n) bc) e s
+runBC' (TAILCALL:bc) e (v:(Fun ef cf):s) = runBC' cf (v:ef) s
 runBC' (IFZ:lenIf:bc) e (c:s) =
   let
     lenIf' = fromIntegral lenIf
