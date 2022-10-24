@@ -1,0 +1,6 @@
+let rec suma (m n : Nat) : Nat =
+    ifz n
+    then m
+    else suma (1 + m) (n - 1)
+
+let r: Nat = print "" (suma 3 2)

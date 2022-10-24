@@ -332,8 +332,23 @@ void run(code init_c)
 		}
 
 		case TAILCALL: {
-			/* implementame */
-			abort();
+			/*
+			 * Aplicación: tenemos en la pila un argumento
+			 * y una función. La función debe ser una clausura.
+			 * La idea es saltar a la clausura extendiendo su
+			 * entorno con el valor de la aplicación, pero
+			 * tenemos que guardar nuestra dirección de retorno.
+			 */
+			value arg = *--s;
+			value fun = *--s;
+
+			/* Cambiamos al entorno de la clausura, agregando arg */
+			e = env_push(fun.clo.clo_env, arg);
+
+			/* Saltamos! */
+			c = fun.clo.clo_body;
+
+			break;
 		}
 
         case CJUMP: {
