@@ -109,6 +109,30 @@ showOps (x:xs)           = show x : showOps xs
 showBC :: Bytecode -> String
 showBC = intercalate "; " . showOps
 
+processIf :: MonadFD4 m => TTerm -> (TTerm -> m Bytecode) -> (TTerm -> m Bytecode) -> m Bytecode
+processIf (IfZ _ c t1 t2) f g =
+  do
+    c' <- bcc c
+    t1' <- f t1
+    t2' <- g t2
+    let lenIf = length t1' + 2
+    let lenElse = length t2'
+    if lenIf > 255
+    then failFD4 ("Rama if muy larga!") -- TODO fix truncation
+    else if lenElse > 255
+      then failFD4 ("Rama else muy larga!") -- TODO fix truncation
+      else return (c' ++ [IFZ, fromIntegral lenIf] ++ t1' ++ [JUMP, fromIntegral lenElse] ++ t2')
+
+bccl :: MonadFD4 m => TTerm -> m Bytecode
+bccl (Let _ n _ t1 (Sc1 t2)) =
+  do
+    t1' <- bcc t1
+    t2' <- bccl t2
+
+    return (t1' ++ [SHIFT] ++ t2')
+bccl t@(IfZ _ c t1 t2) = processIf t bcc bccl
+bccl t = bcc t
+
 bcc :: MonadFD4 m => TTerm -> m Bytecode
 bcc (V _ (Bound i)) = return [ACCESS, fromIntegral i] -- TODO fix truncation
 bcc (V _ (Free _)) = undefined
@@ -147,18 +171,7 @@ bcc (Fix _ name _ f _ (Sc2 t)) =
     if len > 255
     then failFD4 ("Funcion muy larga: " ++ f ++ "!") -- TODO fix truncation
     else return ([FUNCTION, fromIntegral len]++t'++[RETURN, FIX])
-bcc (IfZ _ c t1 t2) =
-  do
-    c' <- bcc c
-    t1' <- bcc t1
-    t2' <- bcc t2
-    let lenIf = length t1' + 2
-    let lenElse = length t2'
-    if lenIf > 255
-    then failFD4 ("Rama if muy larga!") -- TODO fix truncation
-    else if lenElse > 255
-      then failFD4 ("Rama else muy larga!") -- TODO fix truncation
-      else return (c' ++ [IFZ, fromIntegral lenIf] ++ t1' ++ [JUMP, fromIntegral lenElse] ++ t2')
+bcc t@(IfZ _ c t1 t2) = processIf t bcc bcc
 bcc (Let _ n _ t1 (Sc1 t2)) =
   do
     t1' <- bcc t1
@@ -172,18 +185,7 @@ bcct (App _ t1 t2) =
     t1' <- bcc t1
     t2' <- bcc t2
     return (t1'++t2'++[TAILCALL])
-bcct (IfZ _ c t1 t2) =
-  do
-    c' <- bcc c
-    t1' <- bcct t1
-    t2' <- bcct t2
-    let lenIf = length t1' + 2
-    let lenElse = length t2'
-    if lenIf > 255
-    then failFD4 ("Rama if muy larga!") -- TODO fix truncation
-    else if lenElse > 255
-      then failFD4 ("Rama else muy larga!") -- TODO fix truncation
-      else return (c' ++ [IFZ, fromIntegral lenIf] ++ t1' ++ [JUMP, fromIntegral lenElse] ++ t2')
+bcct t@(IfZ _ c t1 t2) = processIf t bcct bcct
 bcct t =
   do
     t' <- bcc t
@@ -200,7 +202,7 @@ bytecompileModule [] = undefined
 bytecompileModule (x:(_:_)) = undefined
 bytecompileModule [(Decl _ _ _ t)] =
   do
-    t' <- bcc t
+    t' <- bccl t
     return (t'++[STOP])
 
 -- | Toma un bytecode, lo codifica y lo escribe un archivo
