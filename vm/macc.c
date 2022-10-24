@@ -20,7 +20,7 @@
 STATIC_ASSERT(sizeof (int) >= sizeof (uint8_t));
 
 /* Habilitar impresión de traza? */
-#define TRACE true
+#define TRACE false
 
 enum {
 	RETURN   = 1,
@@ -189,48 +189,76 @@ void run(code init_c)
 		}
 
 		/* Tracing: sólo activado condicionalmente */
-		if (TRACE) {
-			int n = 0;
-			code cc;
-			fprintf(stderr, "code offset = %li\n", c - init_c);
-			fprintf(stderr, "code -> [");
-			for (cc = c; n < 500 && *cc != STOP; n++, cc++) {
-				fprintf(stderr, "%s ", instNames[*cc]);
-				switch(*cc) {
-				    case CONST:
-				    case ACCESS:
-				    case FUNCTION:
-				    case IFZ:
-				    case JUMP:
-				    case CJUMP: {
-                        fprintf(stderr, "%i ", *++cc);
-                        n++;
-                        break;
-				    }
-				    case PRINT: {
-				        while(*++cc) {
-				            fprintf(stderr, "%c ", *cc);
-				            n++;
-				        }
-				        --cc;
-				        break;
-				    }
-				}
+#if (TRACE)
+            {
+    			int n = 0;
+                code cc;
+                fprintf(stderr, "\ncode offset = %li\n", c - init_c);
+                fprintf(stderr, "code -> [");
+                for (cc = c; n < 500 && *cc != STOP; n++, cc++) {
+                    fprintf(stderr, "%s ", instNames[*cc]);
+                    switch(*cc) {
+                        case CONST:
+                        case ACCESS:
+                        case FUNCTION:
+                        case IFZ:
+                        case JUMP:
+                        case CJUMP: {
+                            fprintf(stderr, "%i ", *++cc);
+                            n++;
+                            break;
+                        }
+                        case PRINT: {
+                            while(*++cc) {
+                                fprintf(stderr, "%c ", *cc);
+                                n++;
+                            }
+                            --cc;
+                            break;
+                        }
+                    }
+                }
+                if (n >= 500)
+                    fprintf(stderr, "...]\n");
+                else
+                    fprintf(stderr, "%s]\n", instNames[STOP]);
 			}
-			if (n >= 500)
-				fprintf(stderr, "...]\n");
-			else
-				fprintf(stderr, "%s]\n", instNames[STOP]);
+			{
+                fprintf(stderr, "stack -> [");
+
+                int n = 0;
+                value *ss;
+                for (ss = stack; n < 500 && ss < s; n++, ss++) {
+                    fprintf(stderr, "{ i: %i, clo: { env: %p,  code: %p } }, ", ss->i, ss->clo.clo_env, ss->clo.clo_body);
+                }
+                if (n >= 500)
+                    fprintf(stderr, "...]\n");
+                else
+                    fprintf(stderr, "]\n");
+			}
+            {
+                fprintf(stderr, "env -> [");
+
+                int n = 0;
+                env ee;
+                for (ee = e; n < 500 && ee != NULL; n++, ee = ee->next) {
+                    fprintf(stderr, "{ i: %i, clo: { env: %p,  code: %p } }, ", ee->v.i, ee->v.clo.clo_env, ee->v.clo.clo_body);
+                }
+                if (n >= 500)
+                    fprintf(stderr, "...]\n");
+                else
+                    fprintf(stderr, "]\n");
+            }
 
 			fprintf(stderr, "*c = %d\n", *c);
 			fprintf(stderr, "|s| = %ld\n", s - stack);
 			fprintf(stderr, "|e| = %d\n", env_len(e));
-		}
+#endif
 
 		/* Consumimos un opcode y lo inspeccionamos. */
 		switch(*c++) {
 		case ACCESS: {
-			(*s++).i = env_get(e, *c++).i;
+			(*s++) = env_get(e, *c++);
 			break;
 		}
 
