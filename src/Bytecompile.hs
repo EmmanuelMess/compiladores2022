@@ -137,7 +137,11 @@ bcc :: MonadFD4 m => TTerm -> m Bytecode
 bcc (V _ (Bound i)) = return [ACCESS, fromIntegral i] -- TODO fix truncation
 bcc (V _ (Free _)) = undefined
 bcc (V _ (Global _)) = undefined
-bcc (Const _ (CNat v)) = return [CONST, fromIntegral v] -- TODO fix truncation
+bcc (Const _ (CNat v)) =
+  do
+    if v > 255
+    then failFD4 ("Valor muy grande: " ++ show v ++ "!")
+    else return [CONST, fromIntegral v] -- TODO fix truncation
 bcc (Lam _ f _ (Sc1 t)) =
   do
     t' <- bcct t
@@ -266,7 +270,7 @@ runBC' (PRINT:bc) e s =
     let (str, bc') = splitOn NULL bc
     printFD4 $ bc2string str
     runBC' bc' e s
-runBC' (PRINTN:bc) e ((I (CNat n)):s) =
+runBC' (PRINTN:bc) e s@((I (CNat n)):_) =
   do
     printFD4 $ show n
     runBC' bc e s

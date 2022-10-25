@@ -1,0 +1,12 @@
+let f (x: Nat): Nat =
+  let g: Nat  = print "x = " x in
+  let x2: Nat = 3 in
+  let h: Nat = print "x2 = " x2 in
+  let x3: Nat = 255 in
+  let i: Nat = print "x3 = " x3 in
+  let x4: Nat = 6 in
+  let j: Nat = print "x4 = " x4 in
+  let x5: Nat = 000 in
+  x5
+
+let r: Nat = f 0
