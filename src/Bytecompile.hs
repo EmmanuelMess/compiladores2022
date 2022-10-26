@@ -72,16 +72,17 @@ pattern FUNCTION = 4
 pattern CALL     = 5
 pattern ADD      = 6
 pattern SUB      = 7
+pattern JUMP     = 8
 pattern FIX      = 9
 pattern STOP     = 10
 pattern SHIFT    = 11
 pattern DROP     = 12
 pattern PRINT    = 13
 pattern PRINTN   = 14
-pattern JUMP     = 15
-pattern TAILCALL = 16
-pattern IFZ      = 17
-pattern POP      = 18
+pattern CJUMP    = JUMP
+pattern TAILCALL = 15
+pattern IFZ      = 16
+pattern POP      = 17
 
 --función util para debugging: muestra el Bytecode de forma más legible.
 showOps :: Bytecode -> [String]
