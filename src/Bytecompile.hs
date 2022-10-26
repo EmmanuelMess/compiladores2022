@@ -225,11 +225,11 @@ bcc (BinaryOp _ op t1 t2) =
     return (t1' ++ t2' ++ [opcode])
 bcc (Fix _ name _ f _ (Sc2 t)) =
   do
-    t' <- bcc t
-    let len = (length t') + 1
+    t' <- bcct t
+    let len = (length t')
     if len > 255
     then failFD4 ("Funcion muy larga: " ++ f ++ "!") -- TODO fix truncation
-    else return ([FUNCTION, fromIntegral len]++t'++[RETURN, FIX])
+    else return ([FUNCTION, fromIntegral len]++t'++[FIX])
 bcc t@(IfZ _ c t1 t2) = processIf t bcc bcc
 bcc (Let _ n _ t1 (Sc1 t2)) =
   do
