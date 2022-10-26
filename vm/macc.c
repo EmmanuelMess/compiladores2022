@@ -40,6 +40,7 @@ enum {
 	CJUMP    = 15,
 	TAILCALL = 16,
 	IFZ      = 17,
+	POP      = 18,
 };
 
 const char* instNames[] = {"NULL", "RETURN", "CONST", "ACCESS", "FUNCTION", "CALL", "ADD", "SUB", "JUMP", "FIX", "STOP", "SHIFT", "DROP", "PRINT", "PRINTN", "CJUMP", "TAILCALL", "IFZ"    };
@@ -442,6 +443,11 @@ void run(code init_c)
 		    } else {
 		        c += lenIf;
 		    }
+			break;
+		}
+
+		case POP: {
+		    --s;
 			break;
 		}
 

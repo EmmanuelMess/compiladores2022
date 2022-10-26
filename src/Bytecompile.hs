@@ -81,6 +81,7 @@ pattern PRINTN   = 14
 pattern JUMP     = 15
 pattern TAILCALL = 16
 pattern IFZ      = 17
+pattern POP      = 18
 
 --función util para debugging: muestra el Bytecode de forma más legible.
 showOps :: Bytecode -> [String]
@@ -104,10 +105,61 @@ showOps (PRINTN:xs)      = "PRINTN" : showOps xs
 showOps (ADD:xs)         = "ADD" : showOps xs
 showOps (TAILCALL:xs)    = "TAILCALL" : showOps xs
 showOps (IFZ:i:xs)       = ("IFZ endif="++(show i)) : showOps xs
+showOps (POP:xs)         = "POP" : showOps xs
 showOps (x:xs)           = show x : showOps xs
 
 showBC :: Bytecode -> String
 showBC = intercalate "; " . showOps
+
+removeOneFromBound :: Int ->  TTerm -> TTerm
+removeOneFromBound n (V p (Bound j)) = if j > n then (V p (Bound (j-1))) else (V p (Bound j))
+removeOneFromBound n t@(V _ _) = t
+removeOneFromBound n (Lam a b c (Sc1 t)) = Lam a b c (Sc1 (removeOneFromBound n t))
+removeOneFromBound n (App a l r) = App a (removeOneFromBound n l) (removeOneFromBound n r)
+removeOneFromBound n (Print a b t) = Print a b (removeOneFromBound n t)
+removeOneFromBound n (BinaryOp a b t l) = BinaryOp a b (removeOneFromBound n t) (removeOneFromBound n l)
+removeOneFromBound n (Fix a b c d e (Sc2 t)) = Fix a b c d e  (Sc2 (removeOneFromBound n t))
+removeOneFromBound n (IfZ p c t e) = IfZ p (removeOneFromBound n c) (removeOneFromBound n t) (removeOneFromBound n e)
+removeOneFromBound n t@(Const _ _) = t
+removeOneFromBound n (Let p na ty e (Sc1 t)) = Let p na ty e (Sc1 (removeOneFromBound (n+1) t))
+
+removeRedundantLets :: TTerm -> TTerm
+removeRedundantLets t@(V _ _) = t
+removeRedundantLets (Lam a b c (Sc1 t)) = Lam a b c (Sc1 (removeRedundantLets t))
+removeRedundantLets (App a l r) = App a (removeRedundantLets l) (removeRedundantLets r)
+removeRedundantLets (Print a b t) = Print a b (removeRedundantLets t)
+removeRedundantLets (BinaryOp a b t u) = BinaryOp a b (removeRedundantLets t) (removeRedundantLets u)
+removeRedundantLets (Fix a b c d e (Sc2 t)) = Fix a b c d e  (Sc2 (removeRedundantLets t))
+removeRedundantLets (IfZ n c t e) = IfZ n (removeRedundantLets c) (removeRedundantLets t) (removeRedundantLets e)
+removeRedundantLets t@(Const _ _) = t
+removeRedundantLets (Let p n ty e (Sc1 t)) =
+  if findInLet 0 t
+  then Let p n ty e (Sc1 (removeRedundantLets t))
+  else if findPrint e
+       then Let p "" ty e (Sc1 (removeRedundantLets (removeOneFromBound 0 t)))
+       else removeRedundantLets (removeOneFromBound 0 t)
+
+findInLet :: Int -> TTerm -> Bool
+findInLet n (V _ (Bound i)) = n == i
+findInLet n (V _ _) = False
+findInLet n (Lam _ _ _ (Sc1 t)) = findInLet n t
+findInLet n (App _ l r) = (findInLet n l) || (findInLet n r)
+findInLet n (Print _ _ t) = (findInLet n t)
+findInLet n (BinaryOp _ _ t u) = (findInLet n t) || (findInLet n u)
+findInLet n (Fix _ _ _ _ _ (Sc2 t)) = (findInLet n t)
+findInLet n (IfZ _ c t e) = (findInLet n c) || (findInLet n t) || (findInLet n e)
+findInLet n (Const _ _) = False
+findInLet n (Let _ _ _ e (Sc1 t)) = (findInLet n e) || (findInLet (n+1) t)
+
+findPrint :: TTerm -> Bool
+findPrint (V _ _) = False
+findPrint (Const _ _) = False
+findPrint (Lam _ _ _ (Sc1 t)) = findPrint t
+findPrint (App _ l r) = findPrint l || findPrint r
+findPrint (Print _ _ _) = True
+findPrint (BinaryOp _ _ t u) = findPrint t || findPrint u
+findPrint (IfZ _ c t e) = findPrint c || findPrint t || findPrint e
+findPrint (Let _ _ _ t1 (Sc1 t2)) = findPrint t1 || findPrint t2
 
 processIf :: MonadFD4 m => TTerm -> (TTerm -> m Bytecode) -> (TTerm -> m Bytecode) -> m Bytecode
 processIf (IfZ _ c t1 t2) f g =
@@ -123,13 +175,16 @@ processIf (IfZ _ c t1 t2) f g =
       then failFD4 ("Rama else muy larga!") -- TODO fix truncation
       else return (c' ++ [IFZ, fromIntegral lenIf] ++ t1' ++ [JUMP, fromIntegral lenElse] ++ t2')
 
+-- Elimina DROP antes de stop
 bccl :: MonadFD4 m => TTerm -> m Bytecode
 bccl (Let _ n _ t1 (Sc1 t2)) =
   do
     t1' <- bcc t1
     t2' <- bccl t2
 
-    return (t1' ++ [SHIFT] ++ t2')
+    if n == ""
+    then return (t1' ++ [POP] ++ t2')
+    else return (t1' ++ [SHIFT] ++ t2')
 bccl t@(IfZ _ c t1 t2) = processIf t bcc bccl
 bccl t = bcc t
 
@@ -181,8 +236,11 @@ bcc (Let _ n _ t1 (Sc1 t2)) =
     t1' <- bcc t1
     t2' <- bcc t2
 
-    return (t1' ++ [SHIFT] ++ t2' ++ [DROP])
+    (if n == ""
+     then return (t1' ++ [POP] ++ t2')
+     else return (t1' ++ [SHIFT] ++ t2' ++ [DROP]))
 
+-- Crea TAILCALL
 bcct :: MonadFD4 m => TTerm -> m Bytecode
 bcct (App _ t1 t2) =
   do
@@ -206,8 +264,9 @@ bytecompileModule [] = undefined
 bytecompileModule (x:(_:_)) = undefined
 bytecompileModule [(Decl _ _ _ t)] =
   do
-    t' <- bccl t
-    return (t'++[STOP])
+    let t' = removeRedundantLets t
+    t'' <- bccl t'
+    return (t''++[STOP])
 
 -- | Toma un bytecode, lo codifica y lo escribe un archivo
 bcWrite :: Bytecode -> FilePath -> IO ()
@@ -282,6 +341,7 @@ runBC' (IFZ:lenIf:bc) e (c:s) =
   in if c == (I $ CNat $ 0)
      then runBC' bc e s
      else runBC' (drop lenIf' bc) e s
+runBC' (POP:bc) e (_:s) = runBC' bc e s
 runBC' bc e s = printState "Failure in VM" bc e s
 
 splitOn :: Eq a => a -> [a] -> ([a], [a])
