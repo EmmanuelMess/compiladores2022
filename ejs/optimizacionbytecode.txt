@@ -1,0 +1,3 @@
+8) La Macchina en Haskell tiene que crear un stack cada vez mas grande, la macchina en
+C no, por lo que la maquina en C consume memoria constante y la de Haskell consume cada
+vez mas.
