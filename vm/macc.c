@@ -37,10 +37,10 @@ enum {
 	DROP     = 12,
 	PRINT    = 13,
 	PRINTN   = 14,
-	CJUMP    = 15,
-	TAILCALL = 16,
-	IFZ      = 17,
-	POP      = 18,
+	CJUMP    = JUMP,
+	TAILCALL = 15,
+	IFZ      = 16,
+	POP      = 17,
 };
 
 const char* instNames[] = {"NULL", "RETURN", "CONST", "ACCESS", "FUNCTION", "CALL", "ADD", "SUB", "JUMP", "FIX", "STOP", "SHIFT", "DROP", "PRINT", "PRINTN", "CJUMP", "TAILCALL", "IFZ"    };
