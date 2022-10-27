@@ -87,9 +87,13 @@ unnameSTerm t@(SSugar (TSugarPrint _ _)) = return t
 toPureDecl :: MonadFD4 m => Decl STerm -> m (Decl STerm)
 toPureDecl (Decl p n ty t) =
   do
+    ty' <- unnameTy p ty
     t' <- (unnameSTerm t)
-    return (Decl p n ty t')
-toPureDecl (DeclType p n ty) = undefined
+    return (Decl p n ty' t')
+toPureDecl (DeclType p n ty) =
+  do
+    ty' <- unnameTy p ty
+    return (DeclType p n ty')
 
 toPureDecls :: MonadFD4 m => [Decl STerm] -> m [Decl STerm]
 toPureDecls [] = return []

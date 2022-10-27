@@ -214,7 +214,8 @@ handleDecl d = do
           Bytecompile -> undefined -- No lidia con decl
           RunVM -> undefined -- No se ejecuta aca
           Eval -> do
-              td <- typecheckDecl (elabDecl d)
+              noTypes <- (toPureDecl . elabDecl) d
+              td <- typecheckDecl noTypes
               -- td' <- if opt then optimizeDecl td else return td
               ed <- evalDecl td
               addDecl ed
