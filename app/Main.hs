@@ -204,6 +204,7 @@ handleDecl d = do
               td' <- if opt then optimize td else (return td)
               ppterm <- ppDecl td'
               printFD4 ppterm
+              addDecl td'
           InteractiveCEK -> do
               noTypes <- (toPureDecl . elabDecl) d
               td <- typecheckDecl noTypes
