@@ -29,6 +29,7 @@ import Options.Applicative
 import Global
 import Errors
 import Lang
+import Optimize ( optimize )
 import UnnameTypes
 import Parse ( P, tm, program, declOrTm, runP )
 import Elab ( elab, elabDecl )
@@ -43,25 +44,21 @@ import CEK
 prompt :: String
 prompt = "FD4> "
 
-
-
 -- | Parser de banderas
 parseMode :: Parser (Mode,Bool)
 parseMode = (,) <$>
-      (flag' Typecheck ( long "typecheck" <> short 't' <> help "Chequear tipos e imprimir el término")
+      (flag' Typecheck         (long "typecheck" <> short 't' <> help "Chequear tipos e imprimir el término")
       <|> flag' InteractiveCEK (long "interactiveCEK" <> short 'k' <> help "Ejecutar interactivamente en la CEK")
-      <|> flag' Bytecompile (long "bytecompile" <> short 'm' <> help "Compilar a la BVM")
-      <|> flag' RunVM (long "runVM" <> short 'r' <> help "Ejecutar bytecode en la BVM")
-      <|> flag Interactive Interactive ( long "interactive" <> short 'i' <> help "Ejecutar en forma interactiva")
-      <|> flag Eval        Eval        (long "eval" <> short 'e' <> help "Evaluar programa")
+      <|> flag' Bytecompile    (long "bytecompile" <> short 'm' <> help "Compilar a la BVM")
+      <|> flag' RunVM          (long "runVM" <> short 'r' <> help "Ejecutar bytecode en la BVM")
+      <|> flag' Interactive    (long "interactive" <> short 'i' <> help "Ejecutar en forma interactiva")
+      <|> flag' Eval           (long "eval" <> short 'e' <> help "Evaluar programa")
   -- <|> flag' CC ( long "cc" <> short 'c' <> help "Compilar a código C")
   -- <|> flag' Canon ( long "canon" <> short 'n' <> help "Imprimir canonicalización")
   -- <|> flag' Assembler ( long "assembler" <> short 'a' <> help "Imprimir Assembler resultante")
   -- <|> flag' Build ( long "build" <> short 'b' <> help "Compilar")
       )
-   <*> pure False
-   -- reemplazar por la siguiente línea para habilitar opción
-   -- <*> flag False True (long "optimize" <> short 'o' <> help "Optimizar código")
+       <*> flag False True (long "optimize" <> short 'o' <> help "Optimizar código")
 
 -- | Parser de opciones general, consiste de un modo y una lista de archivos a procesar
 parseArgs :: Parser (Mode,Bool, [FilePath])
@@ -191,33 +188,38 @@ handleDecl d = do
         case m of
           Interactive -> do
               noTypes <- (toPureDecl . elabDecl) d
-              decl <- typecheckDecl noTypes
-              (case decl of
+              td <- typecheckDecl noTypes
+              opt <- getOpt
+              td' <- if opt then optimize td else (return td)
+              (case td' of
                 Decl p n ty b -> do { te <- eval b; addDecl (Decl p n ty te) }
-                DeclType _ _ _ -> addDecl decl)
+                DeclType _ _ _ -> addDecl td')
           Typecheck -> do
               f <- getLastFile
               printFD4 ("Chequeando tipos de "++f)
               noTypes <- (toPureDecl . elabDecl) d
               td <- typecheckDecl noTypes
               addDecl td
-              -- opt <- getOpt
-              -- td' <- if opt then optimize td else td
-              ppterm <- ppDecl td  --td'
+              opt <- getOpt
+              td' <- if opt then optimize td else (return td)
+              ppterm <- ppDecl td'
               printFD4 ppterm
           InteractiveCEK -> do
               noTypes <- (toPureDecl . elabDecl) d
-              decl <- typecheckDecl noTypes
-              (case decl of
+              td <- typecheckDecl noTypes
+              opt <- getOpt
+              td' <- if opt then optimize td else (return td)
+              (case td' of
                 Decl p n ty b -> do { te <- eval b; addDecl (Decl p n ty te) }
-                DeclType _ _ _ -> addDecl decl)
+                DeclType _ _ _ -> addDecl td')
           Bytecompile -> undefined -- No lidia con decl
           RunVM -> undefined -- No se ejecuta aca
           Eval -> do
               noTypes <- (toPureDecl . elabDecl) d
               td <- typecheckDecl noTypes
-              -- td' <- if opt then optimizeDecl td else return td
-              ed <- evalDecl td
+              opt <- getOpt
+              td' <- if opt then optimize td else (return td)
+              ed <- evalDecl td'
               addDecl ed
 
 typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)

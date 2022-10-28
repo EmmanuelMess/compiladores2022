@@ -1,0 +1,8 @@
+let x: Nat = 3
+let y: Nat = 5
+let q: Nat = 0
+let z: Nat = x + y + q + 3 + 4
+
+let z': Nat = y + (fun (x : Nat ) -> 0) (0) + q + 3 + 4
+let k: Nat = (fun (x : Nat ) -> 0) (0) - 0
+let j: Nat = 0 + (fun (x : Nat ) -> 0) (0) + y + 0
