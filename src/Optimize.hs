@@ -23,7 +23,6 @@ optimize (Decl p n ty t) =
     return (Decl p n ty t')
 optimize d = return d
 
-
 constantFoldingAndPropagation :: MonadFD4 m => TTerm -> m TTerm
 constantFoldingAndPropagation t@(V _ (Bound _)) =
   do
@@ -46,7 +45,10 @@ constantFoldingAndPropagation (IfZ p c t1 t2) =
     c' <- constantFoldingAndPropagation c
     t1' <- constantFoldingAndPropagation t1
     t2' <- constantFoldingAndPropagation t2
-    return (IfZ p c' t1' t2') --TODO remove dead code
+    case c' of
+      (Const p (CNat 0)) -> return t1'
+      (Const p (CNat _)) -> return t2'
+      _                  -> return (IfZ p c' t1' t2')
 constantFoldingAndPropagation (Lam p v ty (Sc1 t)) =
   do
     t' <- constantFoldingAndPropagation t

@@ -6,3 +6,7 @@ let z: Nat = x + y + q + 3 + 4
 let z': Nat = y + (fun (x : Nat ) -> 0) (0) + q + 3 + 4
 let k: Nat = (fun (x : Nat ) -> 0) (0) - 0
 let j: Nat = 0 + (fun (x : Nat ) -> 0) (0) + y + 0
+
+let m: Nat = ifz q then 4 else 5
+
+let n: Nat = ifz z then 4 else 5
