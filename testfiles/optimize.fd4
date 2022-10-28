@@ -10,3 +10,8 @@ let j: Nat = 0 + (fun (x : Nat ) -> 0) (0) + y + 0
 let m: Nat = ifz q then 4 else 5
 
 let n: Nat = ifz z then 4 else 5
+
+let t: Nat =
+  let a: Nat = 3
+  in let b: Nat = print "sfsdf" (5 + 6 +  5)
+     in ifz z then 4 else 5
