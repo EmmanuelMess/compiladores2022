@@ -23,20 +23,16 @@ letWithPrint = ""
 optimize :: MonadFD4 m => Decl TTerm -> m (Decl TTerm)
 optimize (Decl p n ty t) =
   do
-    t1 <- deadCodeElimination t
+    let t1 = deadCodeElimination t
     t2 <- constantFoldingAndPropagation t1
-    t3 <- inlineExpansion t2
+    let t3 = inlineExpansion t2
     t4 <- constantFoldingAndPropagation t3
     return (Decl p n ty t4)
 optimize d = return d
 
 
-inlineExpansion :: MonadFD4 m => TTerm -> m TTerm
-inlineExpansion t =
-  do
-    let t' = inline t
-    let t'' = expand t'
-    return t''
+inlineExpansion :: TTerm -> TTerm
+inlineExpansion t = (expand . inline) t
 
 inline :: TTerm -> TTerm
 inline t@(Let p v ty def@(Lam _ _ _ _) (Sc1 t1)) =
@@ -96,8 +92,8 @@ costScore (Const _ _) = 2
 costScore (Let _ _ _ e (Sc1 t)) = (costScore e) + 1 + (costScore t) + 1
 
 
-deadCodeElimination :: MonadFD4 m => TTerm -> m TTerm
-deadCodeElimination t = return (removeRedundantLets t) -- TODO preguntar si eliminamos codigo del in cuando no hay print
+deadCodeElimination :: TTerm -> TTerm
+deadCodeElimination = removeRedundantLets -- TODO preguntar si eliminamos codigo del in cuando no hay print
 
 removeRedundantLets :: TTerm -> TTerm
 removeRedundantLets t@(V _ _) = t
@@ -118,11 +114,11 @@ removeRedundantLets (Let p n ty e (Sc1 t)) =
 removeOneFromBound :: Int ->  TTerm -> TTerm
 removeOneFromBound n (V p (Bound j)) = if j > n then (V p (Bound (j-1))) else (V p (Bound j))
 removeOneFromBound n t@(V _ _) = t
-removeOneFromBound n (Lam a b c (Sc1 t)) = Lam a b c (Sc1 (removeOneFromBound n t))
+removeOneFromBound n (Lam a b c (Sc1 t)) = Lam a b c (Sc1 (removeOneFromBound (n+1) t))
 removeOneFromBound n (App a l r) = App a (removeOneFromBound n l) (removeOneFromBound n r)
 removeOneFromBound n (Print a b t) = Print a b (removeOneFromBound n t)
 removeOneFromBound n (BinaryOp a b t l) = BinaryOp a b (removeOneFromBound n t) (removeOneFromBound n l)
-removeOneFromBound n (Fix a b c d e (Sc2 t)) = Fix a b c d e  (Sc2 (removeOneFromBound n t))
+removeOneFromBound n (Fix a b c d e (Sc2 t)) = Fix a b c d e  (Sc2 (removeOneFromBound (n+2) t))
 removeOneFromBound n (IfZ p c t e) = IfZ p (removeOneFromBound n c) (removeOneFromBound n t) (removeOneFromBound n e)
 removeOneFromBound n t@(Const _ _) = t
 removeOneFromBound n (Let p na ty e (Sc1 t)) = Let p na ty e (Sc1 (removeOneFromBound (n+1) t))
@@ -131,10 +127,10 @@ findInLet :: Int -> TTerm -> Bool
 findInLet n (V _ (Bound i)) = n == i
 findInLet n (V _ _) = False
 findInLet n (Lam _ _ _ (Sc1 t)) = findInLet n t
-findInLet n (App _ l r) = (findInLet n l) || (findInLet n r)
+findInLet n (App _ l r) = (findInLet n l) || (findInLet (n+1) r)
 findInLet n (Print _ _ t) = (findInLet n t)
 findInLet n (BinaryOp _ _ t u) = (findInLet n t) || (findInLet n u)
-findInLet n (Fix _ _ _ _ _ (Sc2 t)) = (findInLet n t)
+findInLet n (Fix _ _ _ _ _ (Sc2 t)) = (findInLet (n+2) t)
 findInLet n (IfZ _ c t e) = (findInLet n c) || (findInLet n t) || (findInLet n e)
 findInLet n (Const _ _) = False
 findInLet n (Let _ _ _ e (Sc1 t)) = (findInLet n e) || (findInLet (n+1) t)
