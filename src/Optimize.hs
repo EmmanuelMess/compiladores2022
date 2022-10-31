@@ -97,19 +97,28 @@ deadCodeElimination = removeRedundantLets -- TODO preguntar si eliminamos codigo
 
 removeRedundantLets :: TTerm -> TTerm
 removeRedundantLets t@(V _ _) = t
+removeRedundantLets t@(Const _ _) = t
 removeRedundantLets (Lam a b c (Sc1 t)) = Lam a b c (Sc1 (removeRedundantLets t))
 removeRedundantLets (App a l r) = App a (removeRedundantLets l) (removeRedundantLets r)
 removeRedundantLets (Print a b t) = Print a b (removeRedundantLets t)
 removeRedundantLets (BinaryOp a b t u) = BinaryOp a b (removeRedundantLets t) (removeRedundantLets u)
 removeRedundantLets (Fix a b c d e (Sc2 t)) = Fix a b c d e  (Sc2 (removeRedundantLets t))
 removeRedundantLets (IfZ n c t e) = IfZ n (removeRedundantLets c) (removeRedundantLets t) (removeRedundantLets e)
-removeRedundantLets t@(Const _ _) = t
-removeRedundantLets (Let p n ty e (Sc1 t)) =
-  if findInLet t
-  then Let p n ty e (Sc1 (removeRedundantLets t))
-  else if findPrint e
-       then Let p letWithPrint ty e (Sc1 (removeRedundantLets (removeOneFromBound t)))
-       else removeRedundantLets (removeOneFromBound t)
+removeRedundantLets (Let p n ty def (Sc1 t)) =
+  let
+    def' = removeRedundantLets def
+    t' = removeRedundantLets t
+  in if findInLet t'
+     then removeLet (Let p n ty def' (Sc1 t'))
+     else if findPrint def
+          then removeLet (Let p letWithPrint ty def' (Sc1 t'))
+          else removeRedundantLets (removeOneFromBound t)
+
+removeLet :: TTerm -> TTerm
+removeLet t@(Let _ _ _ def (Sc1 t1)) =
+  case t1 of
+    (V _ (Bound 0)) -> def
+    _ -> t
 
 removeOneFromBound :: TTerm -> TTerm
 removeOneFromBound = removeOneFromBound' 0
