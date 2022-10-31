@@ -15,3 +15,14 @@ let t: Nat =
   let a: Nat = 3
   in let b: Nat = print "sfsdf" (5 + 6 +  5)
      in ifz z then 4 else 5
+
+let p: Nat =
+  let f (x: Nat): Nat = x + 2
+  in let b: Nat = print "sfsdf" (f (5 + 6 +  5))
+     in ifz z then 4 else b
+
+let a: Nat =
+  let f (x: Nat): Nat = x + 2
+  in let g (x: Nat): Nat = f ((f x) + 2)
+     in let a: Nat = g (5 + 6 +  5)
+        in ifz z then 0 else a
