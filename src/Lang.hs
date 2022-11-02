@@ -60,7 +60,7 @@ newtype Const = CNat Int
   deriving (Show, Eq)
 
 data BinaryOp = Add | Sub
-  deriving Show
+  deriving (Show, Eq)
 
 data DSugar a =
     DSugarLetFun Pos (Name, [([Name], Ty)], Ty) a
@@ -101,7 +101,7 @@ data Var =
     Bound !Int
   | Free Name
   | Global Name
-  deriving Show
+  deriving (Show, Eq)
 
 -- Scope es un término con una o dos variables que escapan.
 newtype Scope info var = Sc1 (Tm info var)
