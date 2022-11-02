@@ -13,7 +13,7 @@ module Optimize where
 import Data.Maybe
 
 import Eval ( semOp )
-import Subst ( subst, varChanger )
+import Subst ( subst, varChanger, close )
 import Lang
 import MonadFD4
 
@@ -27,8 +27,44 @@ optimize (Decl p n ty t) =
     t2 <- constantFoldingAndPropagation t1
     let t3 = inlineExpansion t2
     t4 <- constantFoldingAndPropagation t3
-    return (Decl p n ty t4)
+    let t5 = commonSubexpressionElimination t4
+    return (Decl p n ty t5)
 optimize d = return d
+
+
+commonSubexpressionElimination :: TTerm -> TTerm
+commonSubexpressionElimination t@(V _ _) = t
+commonSubexpressionElimination t@(Const _ _) = t
+commonSubexpressionElimination (Lam p n ty (Sc1 t)) = Lam p n ty (Sc1 (commonSubexpressionElimination t))
+commonSubexpressionElimination (Print p str t) = Print p str (commonSubexpressionElimination t)
+commonSubexpressionElimination (App p l r) = App p (commonSubexpressionElimination l) (commonSubexpressionElimination r)
+commonSubexpressionElimination (BinaryOp p op t u) =
+  if (equalsNoPos t u) && not ((findPrint u) && (findPrint t)) -- prints en ambos se rompe
+  then let
+         t' = if findPrint t then commonSubexpressionElimination t else commonSubexpressionElimination u
+         t1 = BinaryOp p op (V p (Free "a")) (V p (Free "a"))
+       in Let p "a" NatTy t' (close "a" t1)
+  else let
+         t' = commonSubexpressionElimination t
+         u' = commonSubexpressionElimination u
+       in BinaryOp p op t' u'
+commonSubexpressionElimination (Fix p x xty y yty (Sc2 t)) = Fix p x xty y yty (Sc2 (commonSubexpressionElimination t))
+commonSubexpressionElimination (IfZ p c t e) = IfZ p (commonSubexpressionElimination c) (commonSubexpressionElimination t) (commonSubexpressionElimination e)
+commonSubexpressionElimination (Let p n nty y (Sc1 t)) = Let p n nty (commonSubexpressionElimination y) (Sc1 (commonSubexpressionElimination t))
+
+equalsNoPos :: TTerm -> TTerm -> Bool
+equalsNoPos (Const _ u) (Const _ t) = u == t
+equalsNoPos (V _ u) (V _ t) = u == t
+equalsNoPos (Lam _ _ _ (Sc1 u)) (Lam _ _ _ (Sc1 t)) = equalsNoPos u t
+equalsNoPos (Print _ strT u) (Print _ strU t) = strT == strU && equalsNoPos u t
+equalsNoPos u (Print _ strU t) = equalsNoPos u t
+equalsNoPos (Print _ strT u) t = equalsNoPos u t
+equalsNoPos (App _ lu ru) (App _ lt rt) = equalsNoPos lu lt && equalsNoPos ru rt
+equalsNoPos (BinaryOp _ opu lu ru) (BinaryOp _ opt lt rt) = opu == opt && equalsNoPos lu lt && equalsNoPos ru rt
+equalsNoPos (Fix _ _ _ _ _ (Sc2 u)) (Fix _ _ _ _ _ (Sc2 t)) = equalsNoPos u t
+equalsNoPos (IfZ _ cu tu eu) (IfZ _ ct tt et) = equalsNoPos cu ct && equalsNoPos tu tt && equalsNoPos eu et
+equalsNoPos (Let _ _ _ _ (Sc1 u)) (Let _ _ _ _ (Sc1 t)) = equalsNoPos u t
+equalsNoPos _ _ = False
 
 
 inlineExpansion :: TTerm -> TTerm

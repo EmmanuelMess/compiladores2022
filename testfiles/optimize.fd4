@@ -27,6 +27,13 @@ let a: Nat =
      in let a: Nat = g (5 + 6 +  5)
         in ifz z then 0 else a
 
+let f: Nat = (print "a" 5) + (print "a" 5)
+
+let five: Nat = 5
+
+let g: Nat = (print "a" five) + five
+let g1: Nat = 5 + (print "a" five)
+
 let b: Nat =
   let f (x: Nat): Nat = (x + 2) - 5 - 3 - 15
   in let g (x: Nat): Nat = f (f (f (f (f ((f x) + 2)))))
