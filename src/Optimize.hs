@@ -13,7 +13,7 @@ module Optimize where
 import Data.Maybe
 
 import Eval ( semOp )
-import Subst ( subst, varChanger, close )
+import Subst ( subst, varChanger, close, open )
 import Lang
 import MonadFD4
 
@@ -143,12 +143,12 @@ removeRedundantLets (IfZ n c t e) = IfZ n (removeRedundantLets c) (removeRedunda
 removeRedundantLets (Let p n ty def (Sc1 t)) =
   let
     def' = removeRedundantLets def
-    t' = removeRedundantLets t
+    t' = removeRedundantLets (open n (Sc1 t))
   in if findInLet t'
-     then removeLet (Let p n ty def' (Sc1 t'))
+     then removeLet (Let p n ty def' (close n t'))
      else if findPrint def
-          then removeLet (Let p letWithPrint ty def' (Sc1 t'))
-          else removeRedundantLets (removeOneFromBound t)
+          then removeLet (Let p letWithPrint ty def' (close n t'))
+          else removeRedundantLets (removeOneFromBound (open n (Sc1 t)))
 
 removeLet :: TTerm -> TTerm
 removeLet t@(Let _ _ _ def (Sc1 t1)) =
@@ -200,7 +200,7 @@ findPrint (Let _ _ _ t1 (Sc1 t2)) = findPrint t1 || findPrint t2
 constantFoldingAndPropagation :: MonadFD4 m => TTerm -> m TTerm
 constantFoldingAndPropagation t@(V _ (Bound _)) =
   return t
-constantFoldingAndPropagation t@(V _ (Free _)) = undefined
+constantFoldingAndPropagation t@(V _ (Free _)) = return t
 constantFoldingAndPropagation (V _ (Global n)) =
   do
     t <- lookupDecl n
