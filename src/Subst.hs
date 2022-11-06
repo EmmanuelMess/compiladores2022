@@ -71,6 +71,12 @@ subst n (Sc1 m) = varChanger (\_ p n -> V p (Free n)) bnd m
              | i == depth = n
              | otherwise  = abort "subst: M is not LC"
 
+substNonLc :: Tm info Var -> Scope info Var -> Tm info Var
+substNonLc n (Sc1 m) = varChanger (\_ p n -> V p (Free n)) bnd m
+   where bnd depth p i
+             | i == depth = n
+             | otherwise = V p (Bound i)
+
 -- `subst2 u1 u2 t1 sustituye índice de de Bruijn 0 en t por u1 y el índice 1 por u2. 
 -- Notar que t es un Scope con dos índices que escapan el término.
 subst2 :: Tm info Var -> Tm info Var -> Scope2 info Var -> Tm info Var

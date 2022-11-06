@@ -13,7 +13,7 @@ module Optimize where
 import Data.Maybe
 
 import Eval ( semOp )
-import Subst ( subst, varChanger, close )
+import Subst ( subst, varChanger, close, substNonLc )
 import Lang
 import MonadFD4
 
@@ -68,7 +68,12 @@ equalsNoPos _ _ = False
 
 
 inlineExpansion :: TTerm -> TTerm
-inlineExpansion t = (expand . inline) t
+inlineExpansion t =
+  let
+    t' = (expand . inline) t
+  in if equalsNoPos t t'
+     then t
+     else inlineExpansion t'
 
 inline :: TTerm -> TTerm
 inline t@(Let p v ty def@(Lam _ _ _ _) (Sc1 t1)) =
@@ -89,7 +94,7 @@ inline (BinaryOp p op t u) = BinaryOp p op (inline t) (inline u)
 inline (IfZ p c t e) = IfZ p (inline c) (inline t) (inline e)
 
 expand :: TTerm -> TTerm
-expand (App _ l@(Lam _ _ _ (Sc1 t)) r) = subst (expand r) (Sc1 (expand t))
+expand (App _ l@(Lam _ _ _ s) r) = expand $ removeOneFromBound $ substNonLc r s
 expand (App p l r) = App p (expand l) (expand r)
 expand t@(V _ _) = t
 expand t@(Const _ _) = t
