@@ -42,8 +42,8 @@ commonSubexpressionElimination (BinaryOp p op t u) =
   if (equalsNoPos t u) && not ((findPrint u) && (findPrint t)) -- prints en ambos se rompe
   then let
          t' = if findPrint t then commonSubexpressionElimination t else commonSubexpressionElimination u
-         t1 = BinaryOp p op (V p (Free "a")) (V p (Free "a"))
-       in Let p "a" NatTy t' (close "a" t1)
+         t1 = BinaryOp p op (V p (Bound 0)) (V p (Bound 0))
+       in Let p "r" NatTy t' (Sc1 t1)
   else let
          t' = commonSubexpressionElimination t
          u' = commonSubexpressionElimination u
