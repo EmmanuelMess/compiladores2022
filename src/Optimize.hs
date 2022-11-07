@@ -23,15 +23,28 @@ letWithPrint = ""
 optimize :: MonadFD4 m => Decl TTerm -> m (Decl TTerm)
 optimize (Decl p n ty t) =
   do
+    t' <- optimize' t
+    return (Decl p n ty t')
+optimize d = return d
+
+optimize' :: MonadFD4 m => TTerm -> m TTerm
+optimize' t =
+  do
+    t' <- optimize'' t
+    if equalsNoPos t t'
+    then return t
+    else optimize' t'
+
+optimize'' :: MonadFD4 m => TTerm -> m TTerm
+optimize'' t =
+  do
     let t1 = deadCodeElimination t
     t2 <- constantFoldingAndPropagation t1
     let t3 = inlineExpansion t2
     let t4 = commonSubexpressionElimination t3
-    t5 <- constConvert t4
+    let t5 = constConvert t4
     let t6 = deadCodeElimination t5
-    return (Decl p n ty t6)
-optimize d = return d
-
+    return t6
 
 commonSubexpressionElimination :: TTerm -> TTerm
 commonSubexpressionElimination t@(V _ _) = t
@@ -69,12 +82,7 @@ equalsNoPos _ _ = False
 
 
 inlineExpansion :: TTerm -> TTerm
-inlineExpansion t =
-  let
-    t' = (expand . inline) t
-  in if equalsNoPos t t'
-     then t
-     else inlineExpansion t'
+inlineExpansion = expand . inline
 
 inline :: TTerm -> TTerm
 inline t@(Let p v ty def@(Lam _ _ _ _) (Sc1 t1)) =
@@ -275,15 +283,8 @@ optLet (Let _ _ _ def@(V _ _) s) = subst def s
 optLet t = t
 
 
-constConvert :: MonadFD4 m => TTerm -> m TTerm
-constConvert t =
-  let
-    t' = (expand . constConvert') t
-  in if equalsNoPos t t'
-     then return t
-     else do
-            t'' <- constantFoldingAndPropagation t'
-            constConvert t''
+constConvert :: TTerm -> TTerm
+constConvert = expand . constConvert'
 
 constConvert' :: TTerm -> TTerm
 constConvert' (App _ l@(Lam _ _ _ s) r@(Const _ c)) = constConvert' $ removeOneFromBound $ substNonLc r s
