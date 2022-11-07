@@ -26,9 +26,10 @@ optimize (Decl p n ty t) =
     let t1 = deadCodeElimination t
     t2 <- constantFoldingAndPropagation t1
     let t3 = inlineExpansion t2
-    t4 <- constantFoldingAndPropagation t3
-    let t5 = commonSubexpressionElimination t4
-    return (Decl p n ty t5)
+    let t4 = commonSubexpressionElimination t3
+    t5 <- constConvert t4
+    let t6 = deadCodeElimination t5
+    return (Decl p n ty t6)
 optimize d = return d
 
 
@@ -198,6 +199,7 @@ findPrint (Lam _ _ _ (Sc1 t)) = findPrint t
 findPrint (App _ l r) = findPrint l || findPrint r
 findPrint (Print _ _ _) = True
 findPrint (BinaryOp _ _ t u) = findPrint t || findPrint u
+findPrint (Fix _ _ _ _ _ (Sc2 t)) = findPrint t
 findPrint (IfZ _ c t e) = findPrint c || findPrint t || findPrint e
 findPrint (Let _ _ _ t1 (Sc1 t2)) = findPrint t1 || findPrint t2
 
@@ -271,3 +273,54 @@ optLet :: TTerm -> TTerm
 optLet (Let _ _ _ def@(Const _ _) s) = subst def s
 optLet (Let _ _ _ def@(V _ _) s) = subst def s
 optLet t = t
+
+
+constConvert :: MonadFD4 m => TTerm -> m TTerm
+constConvert t =
+  let
+    t' = (expand . constConvert') t
+  in if equalsNoPos t t'
+     then return t
+     else do
+            t'' <- constantFoldingAndPropagation t'
+            constConvert t''
+
+constConvert' :: TTerm -> TTerm
+constConvert' (App _ l@(Lam _ _ _ s) r@(Const _ c)) = constConvert' $ removeOneFromBound $ substNonLc r s
+constConvert' (App p l r) = App p (constConvert' l) (constConvert' r)
+constConvert' t@(V _ _) = t
+constConvert' t@(Const _ _) = t
+constConvert' (Lam p n ty (Sc1 t)) = Lam p n ty (Sc1 (constConvert' t))
+constConvert' (Print p str t) = Print p str (constConvert' t)
+constConvert' (BinaryOp p op t u) = BinaryOp p op (constConvert' t) (constConvert' u)
+constConvert' (Fix p x xty y yty (Sc2 t)) = Fix p x xty y yty (Sc2 (constConvert' t))
+constConvert' (IfZ p c t e) = IfZ p (constConvert' c) (constConvert' t) (constConvert' e)
+constConvert' (Let p n nty def (Sc1 t)) =
+  let
+    def' = constConvert' def
+    t' = constConvert' (replaceConstUsage t def')
+  in Let p n nty def' (Sc1 t')
+
+replaceConstUsage :: TTerm -> TTerm -> TTerm
+replaceConstUsage = replaceConstUsage' 0
+
+replaceConstUsage' :: Int -> TTerm -> TTerm -> TTerm
+replaceConstUsage' n t@(V _ _) _ = t
+replaceConstUsage' n t@(Const _ _) _ = t
+replaceConstUsage' n (Lam p x xty (Sc1 t)) replace = Lam p x xty (Sc1 $ replaceConstUsage' (n+1) t replace)
+replaceConstUsage' n t@(App p (V _ (Bound i)) t1@(Const _ _)) replace =
+  if i == n
+  then App p replace t1
+  else t
+replaceConstUsage' n (App p l r) replace =
+  App p (replaceConstUsage' n l replace) (replaceConstUsage' n r replace)
+replaceConstUsage' n (Print p str t) replace =
+  Print p str (replaceConstUsage' n t replace)
+replaceConstUsage' n (BinaryOp p op t u) replace =
+  BinaryOp p op (replaceConstUsage' n t replace) (replaceConstUsage' n u replace)
+replaceConstUsage' n (Fix p m mty x xty (Sc2 t)) replace =
+  Fix p m mty x xty (Sc2 $ replaceConstUsage' (n+2) t replace)
+replaceConstUsage' n (IfZ p c t e) replace =
+  IfZ p (replaceConstUsage' n c replace) (replaceConstUsage' n t replace) (replaceConstUsage' n e replace)
+replaceConstUsage' n (Let p x xty t1 (Sc1 t2)) replace =
+  Let p x xty (replaceConstUsage' n t1 replace) (Sc1 $ replaceConstUsage' (n+1) t2 replace)
