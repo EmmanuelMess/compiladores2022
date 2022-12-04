@@ -62,7 +62,7 @@ search (App _ t1 t2) env k =
     r <- search t1 env k'
     return r
 search (V i (Free x)) _ _ = undefined --Imposible este pattern
-search (V _ (Bound i)) env k = destroy (env !! i) k -- TODO fix O(n)?
+search (V _ (Bound i)) env k = destroy (env !! i) k
 search (V i (Global n)) env k =
   do
      val <- lookupDecl n
