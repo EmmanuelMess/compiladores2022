@@ -13,6 +13,7 @@ Stability   : experimental
 module Main where
 
 import System.Console.Haskeline ( defaultSettings, getInputLine, runInputT, InputT )
+import System.Process ( callCommand )
 import Control.Monad.Catch (MonadMask)
 
 --import Control.Monad
@@ -130,8 +131,11 @@ compileBytecode pathFd4 =
           liftIO $ bcWrite bytecode pathBc
           liftIO $ putStrLn $ showBC bytecode
       CC -> do
-          liftIO $ writeFile ((take (length pathFd4 - 3)  pathFd4) ++ "c") $ compileC [d'']
+          let cFileName = (take (length pathFd4 - 3)  pathFd4) ++ "c"
+          let objectFileName = take (length pathFd4 - 4) pathFd4
+          liftIO $ writeFile cFileName $ compileC [d'']
           liftIO $ putStrLn $ compileC [d'']
+          liftIO $ callCommand ("gcc " ++ cFileName ++ " runtime.c " ++" -lgc -o "++objectFileName)
     return ()
   where
     tcAndAdd :: MonadFD4 m => Decl STerm -> m ()

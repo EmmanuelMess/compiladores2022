@@ -19,12 +19,11 @@ import Subst
 
 import C ( ir2C )
 
-freshName :: StateT Int (Writer [IrDecl]) Name
-freshName = do -- TODO make fresh variables relate to actual fd4 code, it is unreadable
+freshName :: (String -> String) -> StateT Int (Writer [IrDecl]) Name
+freshName f = do -- TODO make fresh variables relate to actual fd4 code, it is unreadable
     counter <- get
-    (modify (+1))
-    let freshName = "__" ++ "f" ++ show (counter)
-    return freshName
+    modify (+1)
+    return $ f $ show counter
 
 closeIr :: [Name] -> Name -> Ir -> Ir
 closeIr freevars closname term =
@@ -34,30 +33,28 @@ closeIr freevars closname term =
 closureConvert :: TTerm -> StateT Int (Writer [IrDecl]) Ir
 closureConvert (V _ (Bound i)) =
  do
-   name <- freshName
+   name <- freshName (\c -> "bound"++c)
    return $ IrAccess (IrVar name) IrInt i -- TODO types are wrong in this line
 closureConvert (V _ (Free n)) = return $ IrVar n
 closureConvert (V _ (Global n)) = return $ IrGlobal n
 closureConvert (Const _ c) = return $ IrConst c
 closureConvert (Lam _ n ty s@(Sc1 t)) =
   do
-     newName <- freshName
-     let completeName = newName ++ "__" ++ n
      let freevars = freeVars t
-     let closureName = completeName ++ "__closure"
-     let varName = completeName ++ "__argument"
+     varName <- freshName (\c -> "lam"++c)
+     let closureName = "clos"++varName
      t' <- closeIr freevars closureName <$> closureConvert (open varName s)
 
-     newName1 <- freshName
+     newName1 <- freshName (\c -> "fun"++c)
      tell [IrFun newName1 IrInt [(closureName, IrInt), (varName, IrInt)] t'] -- TODO types are wrong in this line
 
-     newName2 <- freshName
+     newName2 <- freshName (\c -> "clos"++c)
      return $ MkClosure newName2 (fmap IrVar freevars)
 closureConvert (App _ t1 t2) =
   do
     t1' <- closureConvert t1
     t2' <- closureConvert t2
-    name <- freshName
+    name <- freshName (\c -> "app"++c)
     return $ IrLet name IrInt t1' $ IrCall (IrAccess (IrVar name) IrInt 0) [IrVar name, t2'] IrInt -- TODO types are wrong in this line
 closureConvert (Print _ str t) =
   do
