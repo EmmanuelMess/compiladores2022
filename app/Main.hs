@@ -38,6 +38,7 @@ import Bytecompile ( runBC, bcWrite, bcRead, bytecompileModule, showBC )
 import PPrint ( pp , ppTy, ppDecl )
 import MonadFD4
 import TypeChecker ( tc, tcDecl )
+import ClosureConvert ( compileC )
 
 import CEK
 
@@ -53,7 +54,7 @@ parseMode = (,) <$>
       <|> flag' RunVM          (long "runVM" <> short 'r' <> help "Ejecutar bytecode en la BVM")
       <|> flag' Interactive    (long "interactive" <> short 'i' <> help "Ejecutar en forma interactiva")
       <|> flag' Eval           (long "eval" <> short 'e' <> help "Evaluar programa")
-  -- <|> flag' CC ( long "cc" <> short 'c' <> help "Compilar a código C")
+      <|> flag' CC             ( long "cc" <> short 'c' <> help "Compilar a código C")
   -- <|> flag' Canon ( long "canon" <> short 'n' <> help "Imprimir canonicalización")
   -- <|> flag' Assembler ( long "assembler" <> short 'a' <> help "Imprimir Assembler resultante")
   -- <|> flag' Build ( long "build" <> short 'b' <> help "Compilar")
@@ -81,6 +82,8 @@ main = execParser opts >>= go
               runOrFail (Conf opt Bytecompile) (mapM_ compileBytecode files)
     go (RunVM, opt, files) =
               runOrFail (Conf opt RunVM) (mapM_ runBytecode files)
+    go (CC, opt, files) =
+              runOrFail (Conf opt CC) (mapM_ compileBytecode files)
     go (m,opt, files) =
               runOrFail (Conf opt m) (mapM_ compileFile files)
 
@@ -114,10 +117,21 @@ compileBytecode pathFd4 =
     opt <- getOpt
     d'' <- if opt then optimize d' else (return d')
 
-    bytecode <- bytecompileModule [d'']
-    let pathBc = (take (length pathFd4 - 3)  pathFd4) ++ "bc"
-    liftIO $ bcWrite bytecode pathBc
-    liftIO $ putStrLn $ showBC bytecode
+    m <- getMode
+    case m of
+      Interactive -> undefined
+      Typecheck -> undefined
+      Eval -> undefined
+      InteractiveCEK -> undefined
+      RunVM -> undefined
+      Bytecompile -> do
+          bytecode <- bytecompileModule [d'']
+          let pathBc = (take (length pathFd4 - 3)  pathFd4) ++ "bc"
+          liftIO $ bcWrite bytecode pathBc
+          liftIO $ putStrLn $ showBC bytecode
+      CC -> do
+          liftIO $ writeFile ((take (length pathFd4 - 3)  pathFd4) ++ "c") $ compileC [d'']
+          liftIO $ putStrLn $ compileC [d'']
     return ()
   where
     tcAndAdd :: MonadFD4 m => Decl STerm -> m ()
@@ -218,6 +232,7 @@ handleDecl d = do
                 DeclType _ _ _ -> addDecl td')
           Bytecompile -> undefined -- No lidia con decl
           RunVM -> undefined -- No se ejecuta aca
+          CC -> undefined -- No se ejecuta aca
           Eval -> do
               noTypes <- (toPureDecl . elabDecl) d
               td <- typecheckDecl noTypes

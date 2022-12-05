@@ -20,7 +20,7 @@ import Subst
 import C ( ir2C )
 
 freshName :: StateT Int (Writer [IrDecl]) Name
-freshName = do
+freshName = do -- TODO make fresh variables relate to actual fd4 code, it is unreadable
     counter <- get
     (modify (+1))
     let freshName = "__" ++ "f" ++ show (counter)
@@ -31,8 +31,11 @@ closeIr freevars closname term =
   let f (name, i) ir = IrLet name IrInt (IrAccess (IrVar closname) IrInt i) ir -- TODO types are wrong in this line
   in foldr f term (zip freevars [1..])
 
-closureConvert :: Term -> StateT Int (Writer [IrDecl]) Ir
-closureConvert (V _ (Bound i)) = error "Bound en cc"
+closureConvert :: TTerm -> StateT Int (Writer [IrDecl]) Ir
+closureConvert (V _ (Bound i)) =
+ do
+   name <- freshName
+   return $ IrAccess (IrVar name) IrInt i -- TODO types are wrong in this line
 closureConvert (V _ (Free n)) = return $ IrVar n
 closureConvert (V _ (Global n)) = return $ IrGlobal n
 closureConvert (Const _ c) = return $ IrConst c
@@ -84,7 +87,7 @@ typeConvert (NamedTy _) = undefined
 typeConvert NatTy = IrInt
 typeConvert (FunTy _ _) = IrFunTy
 
-runCC :: [Decl Term] -> [IrDecl]
+runCC :: [Decl TTerm] -> [IrDecl]
 runCC decls = snd $ runWriter $ runStateT (go decls) 0
               where go [] = return []
                     go ((Decl _ name _ body):decls') =
@@ -94,5 +97,5 @@ runCC decls = snd $ runWriter $ runStateT (go decls) 0
                         tell [irdecl]
                         go decls'
 
-compileC :: [Decl Term] -> String
+compileC :: [Decl TTerm] -> String
 compileC xs = ir2C $ IrDecls $ runCC xs
