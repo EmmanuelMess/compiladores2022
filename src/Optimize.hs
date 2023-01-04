@@ -143,7 +143,7 @@ costScore (Let _ _ _ e (Sc1 t)) = (costScore e) + 1 + (costScore t) + 1
 
 
 deadCodeElimination :: TTerm -> TTerm
-deadCodeElimination = removeRedundantLets -- TODO preguntar si eliminamos codigo del in cuando no hay print
+deadCodeElimination = removeRedundantLets
 
 removeRedundantLets :: TTerm -> TTerm
 removeRedundantLets t@(V _ _) = t
@@ -162,7 +162,7 @@ removeRedundantLets (Let p n ty def (Sc1 t)) =
      then removeLet (Let p n ty def' (Sc1 t'))
      else if findPrint def
           then removeLet (Let p letWithPrint ty def' (Sc1 t'))
-          else removeRedundantLets (removeOneFromBound t)
+          else removeRedundantLets (removeOneFromBound t) -- TODO dejar solo el resultado
 
 removeLet :: TTerm -> TTerm
 removeLet t@(Let _ _ _ def (Sc1 t1)) =
