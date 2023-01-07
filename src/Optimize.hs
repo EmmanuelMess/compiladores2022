@@ -201,7 +201,7 @@ findInLet' n (Const _ _) = False
 findInLet' n (Let _ _ _ e (Sc1 t)) = (findInLet' n e) || (findInLet' (n+1) t)
 
 findPrint :: TTerm -> Bool
-findPrint (V _ _) = False
+findPrint (V _ _) = True -- TODO fix (puede ser referencia a funcion que contine print o puede que no contenga print, hay que chequear a que hace referencia)
 findPrint (Const _ _) = False
 findPrint (Lam _ _ _ (Sc1 t)) = findPrint t
 findPrint (App _ l r) = findPrint l || findPrint r
