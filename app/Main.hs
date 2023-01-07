@@ -127,7 +127,7 @@ compileBytecode pathFd4 =
       RunVM -> undefined
       Bytecompile -> do
           bytecode <- bytecompileModule [d'']
-          let pathBc = (take (length pathFd4 - 3)  pathFd4) ++ "bc"
+          let pathBc = (take (length pathFd4 - 3)  pathFd4) ++ "bc32"
           liftIO $ bcWrite bytecode pathBc
           liftIO $ putStrLn $ showBC bytecode
       CC -> do
