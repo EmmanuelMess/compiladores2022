@@ -37,16 +37,13 @@ closeIr freevars closname term =
   in foldr f term (zip freevars [1..])
 
 closureConvert :: TTerm -> StateT ([(String, Int)]) (Writer [IrDecl]) Ir
-closureConvert (V (_, ty) (Bound i)) =
- do
-   name <- freshName "bound"
-   return $ IrAccess (IrVar name) (typeConvert ty) i
+closureConvert (V (_, ty) (Bound i)) = undefined -- Si llego aca la compilacion esta rota
 closureConvert (V _ (Free n)) = return $ IrVar n
-closureConvert (V _ (Global n)) = return $ IrGlobal n
+closureConvert (V _ (Global n)) = undefined -- Si llego aca la pre compilacion esta rota
 closureConvert (Const _ c) = return $ IrConst c
 closureConvert (Lam _ n ty s@(Sc1 t)) = -- TODO fix?
   do
-     let freevars = freeVars t -- TODO assert no globals in t
+     let freevars = freeVars t
 
      varName <- freshName "lam"
      let closureName = "clos"++varName
@@ -84,12 +81,14 @@ closureConvert (IfZ _ c t1 t2) =
     t1' <- closureConvert t1
     t2' <- closureConvert t2
     return (IrIfZ c' t1' t2')
-closureConvert (Let _ n ty t1 (Sc1 t2)) =
+closureConvert (Let _ n ty t1 s) =
   do
+    newName <- freshName n
+
     let ty' = typeConvert ty
     t1' <- closureConvert t1
-    t2' <- closureConvert t2
-    return (IrLet n ty' t1' t2')
+    t2' <- closureConvert (open newName s)
+    return (IrLet newName ty' t1' t2')
 
 typeConvert :: Ty -> IrTy
 typeConvert (NamedTy _) = undefined
