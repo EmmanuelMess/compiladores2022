@@ -46,10 +46,12 @@ closureConvert (V _ (Global n)) = return $ IrGlobal n
 closureConvert (Const _ c) = return $ IrConst c
 closureConvert (Lam _ n ty s@(Sc1 t)) = -- TODO fix?
   do
-     let freevars = freeVars t
+     let freevars = freeVars t -- TODO assert no globals in t
+
      varName <- freshName "lam"
      let closureName = "clos"++varName
-     t' <- closeIr freevars closureName <$> closureConvert (open varName s)
+     s' <- closureConvert $ open varName s
+     let t' = closeIr freevars closureName s'
 
      newName1 <- freshName "fun"
      tell [IrFun newName1 IrInt [(closureName, IrInt), (varName, IrInt)] t'] -- TODO types are wrong in this line
@@ -58,7 +60,7 @@ closureConvert (Lam _ n ty s@(Sc1 t)) = -- TODO fix?
      return $ MkClosure newName2 (fmap IrVar freevars)
 closureConvert (App (_, ty) t1 t2) =
   do
-    let t1ty = (typeConvert . getTy) t1
+    let t1ty = termType t1
 
     t1' <- closureConvert t1
     t2' <- closureConvert t2
@@ -94,15 +96,21 @@ typeConvert (NamedTy _) = undefined
 typeConvert NatTy = IrInt
 typeConvert (FunTy _ _) = IrFunTy
 
-runCC :: [Decl TTerm] -> [IrDecl]
-runCC decls = snd $ runWriter $ runStateT (go decls) []
-              where go [] = return []
-                    go ((Decl _ name _ body):decls') =
-                      do
-                        body' <- closureConvert body
-                        let irdecl = IrVal name IrInt body' -- TODO types are wrong in this line
-                        tell [irdecl]
-                        go decls'
+termType :: TTerm -> IrTy
+termType = typeConvert . getTy
 
-compileC :: [Decl TTerm] -> String
+runCC :: Decl TTerm -> [IrDecl]
+runCC (Decl _ name _ body) =
+ let
+   initial =
+     do
+       body' <- closureConvert body
+       let ty = termType body
+       let irdecl = IrVal name ty body'
+       tell [irdecl]
+       return ()
+ in snd $ runWriter $ runStateT initial []
+
+
+compileC :: Decl TTerm -> String
 compileC xs = ir2C $ IrDecls $ runCC xs

@@ -133,8 +133,9 @@ compileBytecode pathFd4 =
       CC -> do
           let cFileName = (take (length pathFd4 - 3)  pathFd4) ++ "c"
           let objectFileName = take (length pathFd4 - 4) pathFd4
-          liftIO $ writeFile cFileName $ compileC [d'']
-          liftIO $ putStrLn $ compileC [d'']
+          let cCode = compileC d''
+          liftIO $ writeFile cFileName $ cCode
+          liftIO $ putStrLn $ cCode
           liftIO $ callCommand ("gcc " ++ cFileName ++ " runtime.c " ++" -lgc -o "++objectFileName)
     return ()
   where
