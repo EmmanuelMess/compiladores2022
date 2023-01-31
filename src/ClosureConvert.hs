@@ -41,20 +41,21 @@ closureConvert (V (_, ty) (Bound i)) = undefined -- Si llego aca la compilacion 
 closureConvert (V _ (Free n)) = return $ IrVar n
 closureConvert (V _ (Global n)) = undefined -- Si llego aca la pre compilacion esta rota
 closureConvert (Const _ c) = return $ IrConst c
-closureConvert (Lam _ n ty s@(Sc1 t)) = -- TODO fix?
+closureConvert (Lam _ n ty s@(Sc1 t)) =
   do
      let freevars = freeVars t
 
-     varName <- freshName "lam"
-     let closureName = "clos"++varName
+     envName <- freshName ("env"++n)
+     varName <- freshName ("var"++n)
+     funName <- freshName ("fun"++n)
+
      s' <- closureConvert $ open varName s
-     let t' = closeIr freevars closureName s'
+     let t' = closeIr freevars envName s'
+     let tty = termType t
 
-     newName1 <- freshName "fun"
-     tell [IrFun newName1 IrInt [(closureName, IrInt), (varName, IrInt)] t'] -- TODO types are wrong in this line
+     tell [IrFun funName (typeConvert ty) [(envName, IrClo), (varName, tty)] t']
 
-     newName2 <- freshName "clos"
-     return $ MkClosure newName2 (fmap IrVar freevars)
+     return $ MkClosure funName (fmap IrVar freevars)
 closureConvert (App (_, ty) t1 t2) =
   do
     let t1ty = termType t1
