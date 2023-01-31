@@ -136,7 +136,7 @@ compileBytecode pathFd4 =
           let cCode = compileC d''
           liftIO $ writeFile cFileName $ cCode
           liftIO $ putStrLn $ cCode
-          liftIO $ callCommand ("gcc " ++ cFileName ++ " runtime.c " ++" -lgc -o "++objectFileName)
+          liftIO $ callCommand ("gcc -std=gnu11 -Wall " ++ cFileName ++ " runtime.c " ++" -lgc -o "++objectFileName)
     return ()
   where
     tcAndAdd :: MonadFD4 m => Decl STerm -> m ()
