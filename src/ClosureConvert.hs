@@ -31,10 +31,10 @@ closeIr freevars closname term =
   in foldr f term (zip freevars [1..])
 
 closureConvert :: TTerm -> StateT Int (Writer [IrDecl]) Ir
-closureConvert (V _ (Bound i)) =
+closureConvert (V (_, ty) (Bound i)) =
  do
    name <- freshName (\c -> "bound"++c)
-   return $ IrAccess (IrVar name) IrInt i -- TODO types are wrong in this line
+   return $ IrAccess (IrVar name) (typeConvert ty) i
 closureConvert (V _ (Free n)) = return $ IrVar n
 closureConvert (V _ (Global n)) = return $ IrGlobal n
 closureConvert (Const _ c) = return $ IrConst c
@@ -50,12 +50,16 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
 
      newName2 <- freshName (\c -> "clos"++c)
      return $ MkClosure newName2 (fmap IrVar freevars)
-closureConvert (App _ t1 t2) =
+closureConvert (App (_, ty) t1 t2) =
   do
+    let t1ty = (typeConvert . getTy) t1
+
     t1' <- closureConvert t1
     t2' <- closureConvert t2
+
     name <- freshName (\c -> "app"++c)
-    return $ IrLet name IrInt t1' $ IrCall (IrAccess (IrVar name) IrInt 0) [IrVar name, t2'] IrInt -- TODO types are wrong in this line
+    let appResult = IrCall (IrAccess (IrVar name) t1ty 0) [IrVar name, t2'] (typeConvert ty)
+    return $ IrLet name t1ty t1' $ appResult
 closureConvert (Print _ str t) =
   do
     t' <- closureConvert t
