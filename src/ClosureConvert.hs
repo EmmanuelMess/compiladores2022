@@ -5,7 +5,7 @@ Copyright   : (c) Mauro Jaskelioff, Guido Martínez, 2020.
 License     : GPL-3
 Maintainer  : mauro@fceia.unr.edu.ar
 Stability   : experimental
-Implementacion de la maquina CEK
+Conversion declausuras y hoisiting
 -}
 
 module ClosureConvert where
