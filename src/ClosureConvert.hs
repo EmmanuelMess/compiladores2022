@@ -45,7 +45,7 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
   do
      let freevars = freeVars t
 
-     let envName = "env"
+     let envName = "env"++n
      let varName = "var"
      let funName = "fun"++n
 
@@ -53,7 +53,7 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
      let t' = closeIr freevars envName s'
      let tty = termType t
 
-     tell [IrFun funName (typeConvert ty) [(envName, IrClo), (varName, tty)] t']
+     tell [IrFun funName IrInt [(envName, IrClo), (varName, tty)] t']
 
      return $ MkClosure funName (fmap IrVar freevars)
 closureConvert (App (_, ty) t1 t2) =
@@ -81,7 +81,21 @@ closureConvert (BinaryOp _ op t1 t2) =
     t1' <- closureConvert t1
     t2' <- closureConvert t2
     return (IrBinaryOp op t1' t2')
-closureConvert (Fix _ x xty n nty (Sc2 t)) = undefined -- TODO
+closureConvert (Fix _ f fty x xty s@(Sc2 t)) =
+  do
+    let freevars = freeVars t
+
+    let envName = "env"++f
+    let varName = "var"
+    let funName = "fun"++f
+
+    s' <- closureConvert $ open2 f varName s
+    let t' = closeIr freevars envName s'
+    let tty = termType t
+
+    tell [IrFun funName IrInt [(envName, IrClo), (varName, tty)] t']
+
+    return $ MkClosure funName (fmap IrVar freevars)
 closureConvert (IfZ _ c t1 t2) =
   do
     c' <- closureConvert c
