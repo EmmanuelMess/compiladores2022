@@ -82,11 +82,11 @@ prelude = pretty "#include <inttypes.h>"
        <> line
        <> pretty "#include <wchar.h>"
        <> line
-       <> pretty "typedef void * (*fd4fun)(void*, void*);"
+       <> pretty "typedef void * (*fd4fun)(void*, void*); // any (*fd4fun)(clo, any)"
        <> line
        <> pretty "typedef void **clo;"
        <> line
-       <> pretty "extern void *fd4_mkclosure(void*, int, ...);"
+       <> pretty "extern void *fd4_mkclosure(void*, int, ...); // clo fd4_mkclosure(fd4fun, int, ...)"
        <> line
        <> pretty "extern uint64_t fd4_printn(uint64_t);"
        <> line
