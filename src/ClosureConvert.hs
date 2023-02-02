@@ -60,7 +60,7 @@ closureConvert t@(App _ t1@(Lam _ _ _ _) _) = convertNamedApp t
 closureConvert t@(App _ t1@(V _ _) _) = convertNamedApp t
 closureConvert (App i t1 t2) =
   do
-    funName <- freshName "lam"
+    funName <- freshName "lam" -- Anonima a nombrada
     let new = Let i funName (getTy t1) t1 (Sc1 $ App i (V i $ Bound 0) t2)
     closureConvert new
 closureConvert (Print _ str t) =
