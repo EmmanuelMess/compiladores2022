@@ -22,7 +22,7 @@ import Subst
 import C ( ir2C )
 
 freshName :: String -> StateT ([(String, Int)]) (Writer [IrDecl]) Name
-freshName str = do -- TODO make fresh variables relate to actual fd4 code, it is unreadable
+freshName str = do
     counters <- get
     let update c = case (lookup str c) of
                       Nothing -> (str, 0):c
@@ -45,15 +45,15 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
   do
      let freevars = freeVars t
 
-     let envName = "env"++n
-     let varName = "var"
-     let funName = "fun"++n
+     let envName = "env"++n -- TODO use actual function name
+     let varName = "var"++n
+     let funName = "fun"++n -- TODO use actual function name
 
      s' <- closureConvert $ open varName s
      let t' = closeIr freevars envName s'
      let tty = termType t
 
-     tell [IrFun funName IrInt [(envName, IrClo), (varName, tty)] t']
+     tell [IrFun funName (tty) [(envName, IrClo), (varName, typeConvert ty)] t']
 
      return $ MkClosure funName (fmap IrVar freevars)
 closureConvert t@(App _ t1@(Lam _ _ _ _) _) = convertNamedApp t
@@ -76,9 +76,9 @@ closureConvert (Fix _ f fty x xty s@(Sc2 t)) =
   do
     let freevars = freeVars t
 
-    let envName = "env"++f
-    let varName = "var"
-    let funName = "fun"++f
+    let envName = "env"++f  -- TODO use actual function name
+    let varName = "var"++x
+    let funName = "fun"++f  -- TODO use actual function name
 
     s' <- closureConvert $ open2 f varName s
     let t' = closeIr freevars envName s'
