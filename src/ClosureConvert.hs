@@ -56,22 +56,13 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
      tell [IrFun funName IrInt [(envName, IrClo), (varName, tty)] t']
 
      return $ MkClosure funName (fmap IrVar freevars)
-closureConvert (App (_, ty) t1 t2) =
+closureConvert t@(App _ t1@(Lam _ _ _ _) _) = convertNamedApp t
+closureConvert t@(App _ t1@(V _ _) _) = convertNamedApp t
+closureConvert (App i t1 t2) =
   do
-    let n = case t1 of
-              (Lam _ name _ _) -> name
-              (V _ (Free name)) -> name
-              otherwise -> undefined
-
-    let t1ty = termType t1
-
-    t1' <- closureConvert t1
-    t2' <- closureConvert t2
-
-    let funName = "fun"++n
-    let envName = "env"++n
-
-    return $ IrCall (IrAccess (IrVar envName) IrFunTy 0) [IrVar envName, t2'] (typeConvert ty)
+    funName <- freshName "lam"
+    let new = Let i funName (getTy t1) t1 (Sc1 $ App i (V i $ Bound 0) t2)
+    closureConvert new
 closureConvert (Print _ str t) =
   do
     t' <- closureConvert t
@@ -119,6 +110,24 @@ closureConvert (Let _ n ty t1 s) =
     t1' <- closureConvert t1
     t2' <- closureConvert (open newName s)
     return (IrLet newName ty' t1' t2')
+
+convertNamedApp :: TTerm -> StateT ([(String, Int)]) (Writer [IrDecl]) Ir
+convertNamedApp (App (_, ty) t1 t2) =
+  do
+    let n = case t1 of
+              (Lam _ name _ _) -> name
+              (V _ (Free name)) -> name
+              otherwise -> undefined
+
+    let t1ty = termType t1
+
+    t1' <- closureConvert t1
+    t2' <- closureConvert t2
+
+    let funName = "fun"++n
+    let envName = "env"++n
+
+    return $ IrCall (IrAccess (IrVar envName) IrFunTy 0) [IrVar envName, t2'] (typeConvert ty)
 
 typeConvert :: Ty -> IrTy
 typeConvert (NamedTy _) = undefined

@@ -4,7 +4,7 @@ import Prettyprinter.Render.Terminal ( renderStrict )
 import IR
 import Lang
 import Data.Text (unpack)
-import Data.Char ( isAlpha, ord )
+import Data.Char ( isAlpha, isDigit, ord )
 
 ty2doc :: IrTy -> Doc a
 ty2doc IrInt = pretty "uint64_t"
@@ -41,6 +41,7 @@ escape = concatMap e1 where
   e1 :: Char -> String
   e1 c | c == '_'  = "__"
        | isAlpha c = [c]
+       | isDigit c = "_" ++ [c]
        | otherwise = "_" ++ show (ord c)
 
 stmt :: Doc a -> Doc a
