@@ -99,17 +99,15 @@ closureConvert (Let _ n ty@(FunTy _ _) t1 s) =
 
     let ty' = typeConvert ty
     t1' <- closureConvert t1
-    t2' <- closureConvert (open n s)
+    t2' <- closureConvert (open n s) -- Se usa la funcion
 
-    return (IrLet envName ty' t1' t2')
-closureConvert (Let _ n ty t1 s) =
+    return (IrLet envName ty' t1' t2') -- Pero el valor guardado es la clausura
+closureConvert (Let _ n ty@(NatTy) t1 s) =
   do
-    newName <- freshName n
-
-    let ty' = typeConvert ty
     t1' <- closureConvert t1
-    t2' <- closureConvert (open newName s)
-    return (IrLet newName ty' t1' t2')
+    t2' <- closureConvert (open n s)
+    return (IrLet n IrInt t1' t2')
+closureConvert (Let _ _ (NamedTy _) _ _) = undefined -- Si llego aca el unname types esta roto
 
 convertNamedApp :: TTerm -> StateT ([(String, Int)]) (Writer [IrDecl]) Ir
 convertNamedApp (App (_, ty) t1 t2) =
@@ -117,7 +115,7 @@ convertNamedApp (App (_, ty) t1 t2) =
     let n = case t1 of
               (Lam _ name _ _) -> name
               (V _ (Free name)) -> name
-              otherwise -> undefined
+              otherwise -> undefined -- No nombrada
 
     let t1ty = termType t1
 

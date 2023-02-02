@@ -83,6 +83,8 @@ prelude = pretty "#include <inttypes.h>"
        <> line
        <> pretty "#include <wchar.h>"
        <> line
+       <> pretty "// typedef union { fd4fun f; clo c; uint64_t i; } any;"
+       <> line
        <> pretty "typedef void * (*fd4fun)(void*, void*); // any (*fd4fun)(clo, any)"
        <> line
        <> pretty "typedef void **clo;"
