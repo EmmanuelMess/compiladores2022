@@ -145,11 +145,11 @@ mapInfo f (Fix i x xty y yty (Sc2 z)) = Fix (f i) x xty y yty (Sc2 $ mapInfo f z
 mapInfo f (IfZ i x y z) = IfZ (f i) (mapInfo f x) (mapInfo f y) (mapInfo f z)
 mapInfo f (Let i x xty y (Sc1 z)) = Let (f i) x xty (mapInfo f y) (Sc1 $ mapInfo f z)
 
--- | Obtiene los nombres de variables (abiertas o globales) de un término.
-freeVars :: Tm info Var -> [Name]
-freeVars tm = nubSort $ go tm [] where
-  go (V _ (Free   v)          ) xs = v : xs
-  go (V _ (Global v)          ) xs = v : xs
+-- | Obtiene los nombres de variables y tipos (abiertas o globales) de un término.
+freeVarsWithType :: TTerm -> [(Name, Ty)]
+freeVarsWithType tm = go tm [] where
+  go (V (_, ty) (Free   v)    ) xs = (v, ty) : xs
+  go (V (_, ty) (Global v)    ) xs = (v, ty) : xs
   go (V _ _                   ) xs = xs
   go (Lam _ _ _ (Sc1 t)       ) xs = go t xs
   go (App   _ l r             ) xs = go l $ go r xs
@@ -159,6 +159,10 @@ freeVars tm = nubSort $ go tm [] where
   go (IfZ _ c t e             ) xs = go c $ go t $ go e xs
   go (Const _ _               ) xs = xs
   go (Let _ _ _ e (Sc1 t)     ) xs = go e (go t xs)
+
+-- | Obtiene los nombres de variables (abiertas o globales) de un término.
+freeVars :: TTerm -> [Name]
+freeVars tm = map fst $ freeVarsWithType tm
 
 toTerm :: [Decl STerm] -> STerm
 toTerm ((Decl p1 n1 ty1 t1):[]) = t1 -- El name no se usa nunca más

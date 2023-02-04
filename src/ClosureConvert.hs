@@ -30,10 +30,10 @@ freshName str = do
     modify update
     return $ str++(show counter)
 
-closeIr :: [Name] -> Name -> Ir -> Ir
-closeIr freevars closname term =
-  let f (name, i) ir = IrLet name IrInt (IrAccess (IrVar closname) IrInt i) ir -- TODO types are wrong in this line
-  in foldr f term (zip freevars [1..])
+closeIr :: [Name] -> [IrTy] -> Name -> Ir -> Ir
+closeIr freeVars freeVarsIrty closureName t =
+  let f (name, irty, i) ir = IrLet name irty (IrAccess (IrVar closureName) irty i) ir
+  in foldr f t (zip3 freeVars freeVarsIrty [1..])
 
 closureConvert :: TTerm -> StateT ([(String, Int)]) (Writer [IrDecl]) Ir
 closureConvert (V (_, ty) (Bound i)) = undefined -- Si llego aca la compilacion esta rota
@@ -42,19 +42,21 @@ closureConvert (V _ (Global n)) = undefined -- Si llego aca la pre compilacion e
 closureConvert (Const _ c) = return $ IrConst c
 closureConvert (Lam _ n ty s@(Sc1 t)) =
   do
-     let freevars = freeVars t
+    let varsWithType = freeVarsWithType t
+    let freeVars = map fst varsWithType
+    let freeVarsIrty = map (typeConvert . snd) varsWithType
 
-     let envName = "env"++n -- TODO use actual function name
-     let varName = "var"++n
-     funName <- freshName $ "fun"++n -- TODO use actual function name
+    let envName = "env"++n -- TODO use actual function name
+    let varName = "var"++n
+    funName <- freshName $ "fun"++n -- TODO use actual function name
 
-     s' <- closureConvert $ open varName s
-     let t' = closeIr freevars envName s'
-     let tty = termType t
+    s' <- closureConvert $ open varName s
+    let t' = closeIr freeVars freeVarsIrty envName s'
+    let tty = termType t
 
-     tell [IrFun funName (tty) [(envName, IrClo), (varName, typeConvert ty)] t']
+    tell [IrFun funName (tty) [(envName, IrClo), (varName, typeConvert ty)] t']
 
-     return $ MkClosure funName (fmap IrVar freevars)
+    return $ MkClosure funName (fmap IrVar freeVars)
 closureConvert t@(App _ t1@(Lam _ _ _ _) _) = convertNamedApp t
 closureConvert t@(App _ t1@(V _ _) _) = convertNamedApp t
 closureConvert (App (p, ty) t1 t2) =
@@ -75,19 +77,21 @@ closureConvert (BinaryOp _ op t1 t2) =
     return (IrBinaryOp op t1' t2')
 closureConvert (Fix _ f fty x xty s@(Sc2 t)) =
   do
-    let freevars = freeVars t
+    let varsWithType = freeVarsWithType t
+    let freeVars = map fst varsWithType
+    let freeVarsIrty = map (typeConvert . snd) varsWithType
 
     let envName = "env"++f  -- TODO use actual function name
     let varName = "var"++x
     funName <- freshName $ "fun"++f  -- TODO use actual function name
 
     s' <- closureConvert $ open2 f varName s
-    let t' = closeIr freevars envName s'
+    let t' = closeIr freeVars freeVarsIrty envName s'
     let tty = termType t
 
     tell [IrFun funName IrInt [(envName, IrClo), (varName, tty)] t']
 
-    return $ MkClosure funName (fmap IrVar freevars)
+    return $ MkClosure funName (fmap IrVar freeVars)
 closureConvert (IfZ _ c t1 t2) =
   do
     c' <- closureConvert c
