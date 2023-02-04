@@ -57,10 +57,12 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
      return $ MkClosure funName (fmap IrVar freevars)
 closureConvert t@(App _ t1@(Lam _ _ _ _) _) = convertNamedApp t
 closureConvert t@(App _ t1@(V _ _) _) = convertNamedApp t
-closureConvert (App i t1 t2) =
+closureConvert (App (p, ty) t1 t2) =
   do
+    let tyt1 = getTy t1
+    let tyt2 = getTy t2
     funName <- freshName "lam" -- Anonima a nombrada
-    let new = Let i funName (getTy t1) t1 (Sc1 $ App i (V i $ Bound 0) t2) -- TODO fix type in info
+    let new = Let (p, tyt2) funName tyt1 t1 (Sc1 $ App (p, tyt2) (V (p, tyt1) $ Bound 0) t2)
     closureConvert new
 closureConvert (Print _ str t) =
   do
