@@ -1,0 +1,2 @@
+let r0:Nat = let f (x: Nat): Nat = 3 in print "0" (f 0)
+let r1:Nat = let f (x: Nat): Nat = 4 in print "1" (f 1)

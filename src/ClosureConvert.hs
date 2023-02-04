@@ -23,12 +23,11 @@ import C ( ir2C )
 
 freshName :: String -> StateT ([(String, Int)]) (Writer [IrDecl]) Name
 freshName str = do
-    counters <- get
+    counter <- gets (\c -> fromMaybe 0 $ lookup str c)
     let update c = case (lookup str c) of
-                      Nothing -> (str, 0):c
+                      Nothing -> (str, 1):c
                       Just x -> (str, x+1):(filter ((/=str) . fst) c)
     modify update
-    let counter = fromMaybe 0 (lookup str counters)
     return $ str++(show counter)
 
 closeIr :: [Name] -> Name -> Ir -> Ir
@@ -47,7 +46,7 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
 
      let envName = "env"++n -- TODO use actual function name
      let varName = "var"++n
-     let funName = "fun"++n -- TODO use actual function name
+     funName <- freshName $ "fun"++n -- TODO use actual function name
 
      s' <- closureConvert $ open varName s
      let t' = closeIr freevars envName s'
@@ -61,7 +60,7 @@ closureConvert t@(App _ t1@(V _ _) _) = convertNamedApp t
 closureConvert (App i t1 t2) =
   do
     funName <- freshName "lam" -- Anonima a nombrada
-    let new = Let i funName (getTy t1) t1 (Sc1 $ App i (V i $ Bound 0) t2)
+    let new = Let i funName (getTy t1) t1 (Sc1 $ App i (V i $ Bound 0) t2) -- TODO fix type in info
     closureConvert new
 closureConvert (Print _ str t) =
   do
@@ -78,7 +77,7 @@ closureConvert (Fix _ f fty x xty s@(Sc2 t)) =
 
     let envName = "env"++f  -- TODO use actual function name
     let varName = "var"++x
-    let funName = "fun"++f  -- TODO use actual function name
+    funName <- freshName $ "fun"++f  -- TODO use actual function name
 
     s' <- closureConvert $ open2 f varName s
     let t' = closeIr freevars envName s'
@@ -122,7 +121,6 @@ convertNamedApp (App (_, ty) t1 t2) =
     t1' <- closureConvert t1
     t2' <- closureConvert t2
 
-    let funName = "fun"++n
     let envName = "env"++n
 
     return $ IrCall (IrAccess (IrVar envName) IrFunTy 0) [IrVar envName, t2'] (typeConvert ty)
