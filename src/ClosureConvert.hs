@@ -28,11 +28,25 @@ freshName str = do
                       Nothing -> (str, 1):c
                       Just x -> (str, x+1):(filter ((/=str) . fst) c)
     modify update
-    return $ str++(show counter)
+    return $ str++" "++(show counter)
+
+env :: Name -> Name
+env = ("env "++)
+
+var :: Name -> Name
+var = ("var "++)
+
+fun :: Name -> Name
+fun = ("fun "++)
+
+lam :: Name
+lam = "lam"
 
 closeIr :: [Name] -> [IrTy] -> Name -> Ir -> Ir
 closeIr freeVars freeVarsIrty closureName t =
-  let f (name, irty, i) ir = IrLet name irty (IrAccess (IrVar closureName) irty i) ir
+  let
+    f (name, IrClo, i) ir = IrLet (env name) IrClo (IrAccess (IrVar closureName) IrClo i) ir
+    f (name, irty, i) ir = IrLet name irty (IrAccess (IrVar closureName) irty i) ir
   in foldr f t (zip3 freeVars freeVarsIrty [1..])
 
 closureConvert :: TTerm -> StateT ([(String, Int)]) (Writer [IrDecl]) Ir
@@ -46,9 +60,9 @@ closureConvert (Lam _ n ty s@(Sc1 t)) =
     let freeVars = map fst varsWithType
     let freeVarsIrty = map (typeConvert . snd) varsWithType
 
-    let envName = "env"++n -- TODO use actual function name
-    let varName = "var"++n
-    funName <- freshName $ "fun"++n -- TODO use actual function name
+    let envName = env n -- TODO use actual function name
+    let varName = var n
+    funName <- freshName $ fun n -- TODO use actual function name
 
     s' <- closureConvert $ open varName s
     let t' = closeIr freeVars freeVarsIrty envName s'
@@ -63,7 +77,7 @@ closureConvert (App (p, ty) t1 t2) =
   do
     let tyt1 = getTy t1
     let tyt2 = getTy t2
-    funName <- freshName "lam" -- Anonima a nombrada
+    funName <- freshName lam -- Anonima a nombrada
     let new = Let (p, tyt2) funName tyt1 t1 (Sc1 $ App (p, tyt2) (V (p, tyt1) $ Bound 0) t2)
     closureConvert new
 closureConvert (Print _ str t) =
@@ -81,11 +95,11 @@ closureConvert (Fix _ f fty x xty s@(Sc2 t)) =
     let freeVars = map fst varsWithType
     let freeVarsIrty = map (typeConvert . snd) varsWithType
 
-    let envName = "env"++f  -- TODO use actual function name
-    let varName = "var"++x
-    funName <- freshName $ "fun"++f  -- TODO use actual function name
+    let envName = env f  -- TODO use actual function name
+    let varName = var x
+    funName <- freshName $ fun f  -- TODO use actual function name
 
-    s' <- closureConvert $ open2 f varName s
+    s' <- closureConvert $ open2 envName varName s
     let t' = closeIr freeVars freeVarsIrty envName s'
     let tty = termType t
 
@@ -100,7 +114,7 @@ closureConvert (IfZ _ c t1 t2) =
     return (IrIfZ c' t1' t2')
 closureConvert (Let _ n ty@(FunTy _ _) t1 s) =
   do
-    let envName = "env"++n
+    let envName = env n
 
     let ty' = typeConvert ty
     t1' <- closureConvert t1
@@ -127,7 +141,7 @@ convertNamedApp (App (_, ty) t1 t2) =
     t1' <- closureConvert t1
     t2' <- closureConvert t2
 
-    let envName = "env"++n
+    let envName = env n
 
     return $ IrCall (IrAccess (IrVar envName) IrFunTy 0) [IrVar envName, t2'] (typeConvert ty)
 

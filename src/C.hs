@@ -40,8 +40,9 @@ name n = pretty $ "fd4_" ++ escape n    --prefijo fd4 para evitar colision con n
 escape = concatMap e1 where
   e1 :: Char -> String
   e1 c | c == '_'  = "__"
+       | c == ' ' = "_"
        | isAlpha c = [c]
-       | isDigit c = "_" ++ [c]
+       | isDigit c = [c]
        | otherwise = "_" ++ show (ord c)
 
 stmt :: Doc a -> Doc a
