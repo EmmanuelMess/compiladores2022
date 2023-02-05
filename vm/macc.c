@@ -21,6 +21,11 @@ STATIC_ASSERT(sizeof (int) >= sizeof (uint8_t));
 
 /* Habilitar impresión de traza? */
 #define TRACE false
+#define SANITY false
+
+#if SANITY
+#include <assert.h>
+#endif
 
 enum {
 	RETURN   = 1,
@@ -43,7 +48,7 @@ enum {
 	POP      = 17,
 };
 
-const char* instNames[] = {"NULL", "RETURN", "CONST", "ACCESS", "FUNCTION", "CALL", "ADD", "SUB", "JUMP", "FIX", "STOP", "SHIFT", "DROP", "PRINT", "PRINTN", "CJUMP", "TAILCALL", "IFZ"    };
+const char* instNames[] = {"NULL", "RETURN", "CONST", "ACCESS", "FUNCTION", "CALL", "ADD", "SUB", "JUMP", "FIX", "STOP", "SHIFT", "DROP", "PRINT", "PRINTN", "TAILCALL", "IFZ", "POP"  };
 
 #define quit(...)							\
 	do {								\
@@ -77,6 +82,8 @@ struct clo {
 	code clo_body;
 };
 
+typedef uint32_t nat;
+
 /*
  * Los valores son o un entero, o una clausura. Notar que no hay una
  * etiqueta para distinguirlos: la máquina asume que el bytecode estaba
@@ -84,7 +91,7 @@ struct clo {
  * de chequeo en runtime.
  */
 union value {
-	uint8_t i;
+	nat i;
 	struct clo clo;
 };
 typedef union value value;
@@ -105,16 +112,27 @@ struct env {
 static inline env env_push(env e, value v)
 {
 	env new = GC_malloc(sizeof *new);
+	#if SANITY
+        assert(new);
+    #endif
 	new->v = v;
 	new->next = e;
 	return new;
 }
+
+#if SANITY
+    static int env_len(env e);
+#endif
 
 /*
  * Devuelve un valor del entorno `e`.
  */
 static inline value env_get(env e, const unsigned int n)
 {
+#if SANITY
+    assert(n < env_len(e));
+#endif
+
     env envStep = e;
     for(unsigned int i = 0; i < n; i++) {
         envStep = envStep->next;
@@ -203,8 +221,7 @@ void run(code init_c)
                         case ACCESS:
                         case FUNCTION:
                         case IFZ:
-                        case JUMP:
-                        case CJUMP: {
+                        case CJUMP: {//case JUMP:
                             fprintf(stderr, "%i ", *++cc);
                             n++;
                             break;
@@ -274,8 +291,8 @@ void run(code init_c)
 			 * Suma: desapilamos los dos operandos, sumamos,
 			 * y apilamos el resultado.
 			 */
-			uint8_t y = (*--s).i;
-			uint8_t x = (*--s).i;
+			nat y = (*--s).i;
+			nat x = (*--s).i;
 			(*s++).i = x+y;
 			break;
 		}
@@ -285,8 +302,8 @@ void run(code init_c)
 			 * Resta: ya tenemos los valores en el tope de la pila,
 			 * hacemos la resta solo si x > y, sino es 0.
 			 */
-			uint8_t y = (*--s).i;
-			uint8_t x = (*--s).i;
+			nat y = (*--s).i;
+			nat x = (*--s).i;
 			(*s++).i = x > y ? x-y : 0;
 			break;
 		}
@@ -422,7 +439,7 @@ void run(code init_c)
 		}
 
 		case PRINTN: {
-			uint8_t i = s[-1].i;
+			nat i = s[-1].i;
 			wprintf(L"%" PRIu32 "\n", i);
 			break;
 		}

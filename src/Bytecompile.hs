@@ -18,7 +18,6 @@ module Bytecompile
 import Lang
 import Eval ( semOp )
 import Subst
-import Optimize ( letWithPrint )
 import MonadFD4
 
 import Control.Arrow
@@ -113,6 +112,19 @@ showOps (x:xs)           = show x : showOps xs
 showBC :: Bytecode -> String
 showBC = intercalate "; " . showOps
 
+used :: Scope info Var -> Bool
+used (Sc1 t) = go 0 t where
+  go n (V _ (Bound i)) = i == n
+  go n (V _ _) = False
+  go n (Lam _ _ _ (Sc1 t))   = go (n+1) t
+  go n (App _ l r)   = (go n l) || (go n r)
+  go n (Fix _ _ _ _ _ (Sc2 t)) = go (n+2) t
+  go n (IfZ _ c t e) = (go n c) || (go n t) || (go n e)
+  go n t@(Const _ _) = False
+  go n (Print _ _ t) = go n t
+  go n (BinaryOp _ _ t u) = (go n t) || (go n u)
+  go n (Let _ _ _ m (Sc1 o)) = (go n m) || (go (n+1) o)
+
 processIf :: MonadFD4 m => TTerm -> (TTerm -> m Bytecode) -> (TTerm -> m Bytecode) -> m Bytecode
 processIf (IfZ _ c t1 t2) f g =
   do
@@ -183,12 +195,12 @@ bcc (Fix _ name _ f _ (Sc2 t)) =
     then failFD4 ("Funcion muy larga: " ++ f ++ "!") -- TODO fix truncation
     else return ([FUNCTION, fromIntegral len]++t'++[FIX])
 bcc t@(IfZ _ c t1 t2) = processIf t bcc bcc
-bcc (Let _ n _ t1 (Sc1 t2)) =
+bcc (Let _ _ _ t1 s@(Sc1 t2)) =
   do
     t1' <- bcc t1
     t2' <- bcc t2
 
-    (if n == letWithPrint
+    (if not $ used s
      then return (t1' ++ [POP] ++ t2')
      else return (t1' ++ [SHIFT] ++ t2' ++ [DROP]))
 

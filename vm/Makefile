@@ -1,7 +1,7 @@
 all: macc
 
 %.o: CFLAGS+= -Wall -pedantic
-LDLIBS +=-lgc
+LDLIBS +=-lgc -ggdb
 macc: macc.c
 
 
