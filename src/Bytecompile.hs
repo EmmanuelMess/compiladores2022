@@ -144,11 +144,16 @@ bccl :: MonadFD4 m => TTerm -> m Bytecode
 bccl (Let _ n _ t1 (Sc1 t2)) =
   do
     t1' <- bcc t1
-    t2' <- bccl t2
 
     if n == ""
-    then return (t1' ++ [POP] ++ t2')
-    else return (t1' ++ [SHIFT] ++ t2')
+    then
+      do
+        t2' <- bccl $ removeOneFromBound t2
+        return (t1' ++ [POP] ++ t2')
+    else
+      do
+        t2' <- bccl t2
+        return (t1' ++ [SHIFT] ++ t2')
 bccl t@(IfZ _ c t1 t2) = processIf t bcc bccl
 bccl t = bcc t
 
@@ -198,11 +203,16 @@ bcc t@(IfZ _ c t1 t2) = processIf t bcc bcc
 bcc (Let _ _ _ t1 s@(Sc1 t2)) =
   do
     t1' <- bcc t1
-    t2' <- bcc t2
 
-    (if not $ used s
-     then return (t1' ++ [POP] ++ t2')
-     else return (t1' ++ [SHIFT] ++ t2' ++ [DROP]))
+    if not $ used s
+    then
+      do
+        t2' <- bcc $ removeOneFromBound t2
+        return (t1' ++ [POP] ++ t2')
+    else
+      do
+        t2' <- bcc t2
+        return (t1' ++ [SHIFT] ++ t2' ++ [DROP])
 
 -- Crea TAILCALL
 bcct :: MonadFD4 m => TTerm -> m Bytecode

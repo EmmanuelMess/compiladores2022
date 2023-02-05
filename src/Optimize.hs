@@ -13,7 +13,7 @@ module Optimize where
 import Data.Maybe
 
 import Eval ( semOp )
-import Subst ( subst, varChanger, close, substNonLc )
+import Subst ( subst, varChanger, close, substNonLc, removeOneFromBound )
 import Lang
 import MonadFD4
 
@@ -169,21 +169,6 @@ removeLet t@(Let _ _ _ def (Sc1 t1)) =
   case t1 of
     (V _ (Bound 0)) -> def
     _ -> t
-
-removeOneFromBound :: TTerm -> TTerm
-removeOneFromBound = removeOneFromBound' 0
-
-removeOneFromBound' :: Int ->  TTerm -> TTerm
-removeOneFromBound' n (V p (Bound j)) = if j > n then (V p (Bound (j-1))) else (V p (Bound j))
-removeOneFromBound' n t@(V _ _) = t
-removeOneFromBound' n (Lam a b c (Sc1 t)) = Lam a b c (Sc1 (removeOneFromBound' (n+1) t))
-removeOneFromBound' n (App a l r) = App a (removeOneFromBound' n l) (removeOneFromBound' n r)
-removeOneFromBound' n (Print a b t) = Print a b (removeOneFromBound' n t)
-removeOneFromBound' n (BinaryOp a b t l) = BinaryOp a b (removeOneFromBound' n t) (removeOneFromBound' n l)
-removeOneFromBound' n (Fix a b c d e (Sc2 t)) = Fix a b c d e  (Sc2 (removeOneFromBound' (n+2) t))
-removeOneFromBound' n (IfZ p c t e) = IfZ p (removeOneFromBound' n c) (removeOneFromBound' n t) (removeOneFromBound' n e)
-removeOneFromBound' n t@(Const _ _) = t
-removeOneFromBound' n (Let p na ty e (Sc1 t)) = Let p na ty e (Sc1 (removeOneFromBound' (n+1) t))
 
 findInLet :: TTerm -> Bool
 findInLet = findInLet' 0
