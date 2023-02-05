@@ -1,3 +1,0 @@
-let x: Nat = 4
-let x: Nat = 5
-let y: Nat = print "" (x + x)
