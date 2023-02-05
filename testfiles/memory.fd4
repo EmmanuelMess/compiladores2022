@@ -1,2 +1,2 @@
-let rec f (x:Nat) : Nat = f x
-let ret : Nat = f 0
+let rec f (x:Nat) : Nat = let a: Nat = print "paso" (x-1) in ifz a then a else f a
+let ret : Nat = f 100000
