@@ -165,7 +165,7 @@ bcc (Print _ str t) =
   do
     t' <- bcc t
     let serialStr = string2bc str
-    return ([PRINT]++serialStr++[NULL]++t'++[PRINTN])
+    return (t'++[PRINT]++serialStr++[NULL]++[PRINTN])
 bcc (BinaryOp _ op t1 t2) =
   do
     t1' <- bcc t1
@@ -278,7 +278,7 @@ runBC' (DROP:bc) (v:e) s = runBC' bc e s
 runBC' (PRINT:bc) e s =
   do
     let (str, bc') = splitOn NULL bc
-    printFD4 $ bc2string str
+    printFD4' False $ bc2string str
     runBC' bc' e s
 runBC' (PRINTN:bc) e s@((I (CNat n)):_) =
   do

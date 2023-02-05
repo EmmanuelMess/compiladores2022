@@ -3,4 +3,4 @@ let test: (Nat -> Nat) = fun (x:Nat) ->
   let (z : Nat) = print "res = " res in
   res
 
-let x: Nat = test 999
+let x: Nat = test 255
