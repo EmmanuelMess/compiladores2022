@@ -61,7 +61,7 @@ parseMode = (,,) <$>
   -- <|> flag' Build ( long "build" <> short 'b' <> help "Compilar")
       )
        <*> flag False True (long "optimize" <> short 'o' <> help "Optimizar código")
-       <*> flag False True (long "cek" <> help "Pasar por CEK")
+       <*> flag False True (long "cek" <> help "Pasar por CEK") -- TODO hacer solo valida cuando se ejecuta con --eval
 
 -- | Parser de opciones general, consiste de un modo y una lista de archivos a procesar
 parseArgs :: Parser (Mode,Bool,Bool, [FilePath])
