@@ -52,6 +52,7 @@ data Mode =
   -- | Build
 data Conf = Conf {
     opt :: Bool,          --  ^ True, si estan habilitadas las optimizaciones.
+    cek :: Bool,          --  ^ True, si se ejecuta en el CEK.
     modo :: Mode
 }
 

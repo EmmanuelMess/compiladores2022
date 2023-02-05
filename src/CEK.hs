@@ -75,7 +75,7 @@ search l@(Fix _ _ _ _ _ (Sc2 t)) env k = destroy (Closure (ClosureFix env t l)) 
 search l@(Let _ _ _ t (Sc1 t')) env k = search t env ((FLet env t') : k)
 
 destroy :: MonadFD4 m => Val -> Kont -> m Val
-destroy v@(Num n) ((FPrint str):k) =
+destroy v@(Num (CNat n)) ((FPrint str):k) =
   do
     printFD4 (str++show n)
     r <- destroy v k

@@ -47,8 +47,8 @@ prompt :: String
 prompt = "FD4> "
 
 -- | Parser de banderas
-parseMode :: Parser (Mode,Bool)
-parseMode = (,) <$>
+parseMode :: Parser (Mode,Bool,Bool)
+parseMode = (,,) <$>
       (flag' Typecheck         (long "typecheck" <> short 't' <> help "Chequear tipos e imprimir el término")
       <|> flag' InteractiveCEK (long "interactiveCEK" <> short 'k' <> help "Ejecutar interactivamente en la CEK")
       <|> flag' Bytecompile    (long "bytecompile" <> short 'm' <> help "Compilar a la BVM")
@@ -61,10 +61,11 @@ parseMode = (,) <$>
   -- <|> flag' Build ( long "build" <> short 'b' <> help "Compilar")
       )
        <*> flag False True (long "optimize" <> short 'o' <> help "Optimizar código")
+       <*> flag False True (long "cek" <> help "Pasar por CEK")
 
 -- | Parser de opciones general, consiste de un modo y una lista de archivos a procesar
-parseArgs :: Parser (Mode,Bool, [FilePath])
-parseArgs = (\(a,b) c -> (a,b,c)) <$> parseMode <*> many (argument str (metavar "FILES..."))
+parseArgs :: Parser (Mode,Bool,Bool, [FilePath])
+parseArgs = (\(a,b,c) d -> (a,b,c,d)) <$> parseMode <*> many (argument str (metavar "FILES..."))
 
 main :: IO ()
 main = execParser opts >>= go
@@ -74,19 +75,19 @@ main = execParser opts >>= go
      <> progDesc "Compilador de FD4"
      <> header "Compilador de FD4 de la materia Compiladores 2022" )
 
-    go :: (Mode,Bool,[FilePath]) -> IO ()
-    go (Interactive,opt,files) =
-              runOrFail (Conf opt Interactive) (runInputT defaultSettings (repl files))
-    go (InteractiveCEK, opt, files) =
-              runOrFail (Conf opt InteractiveCEK) (runInputT defaultSettings (repl files))
-    go (Bytecompile, opt, files) =
-              runOrFail (Conf opt Bytecompile) (mapM_ compileBytecode files)
-    go (RunVM, opt, files) =
-              runOrFail (Conf opt RunVM) (mapM_ runBytecode files)
-    go (CC, opt, files) =
-              runOrFail (Conf opt CC) (mapM_ compileBytecode files)
-    go (m,opt, files) =
-              runOrFail (Conf opt m) (mapM_ compileFile files)
+    go :: (Mode,Bool,Bool,[FilePath]) -> IO ()
+    go (Interactive, opt, cek, files) =
+              runOrFail (Conf opt cek Interactive) (runInputT defaultSettings (repl files))
+    go (InteractiveCEK, opt, cek, files) =
+              runOrFail (Conf opt cek InteractiveCEK) (runInputT defaultSettings (repl files))
+    go (Bytecompile, opt, cek, files) =
+              runOrFail (Conf opt cek Bytecompile) (mapM_ compileBytecode files)
+    go (RunVM, opt, cek, files) =
+              runOrFail (Conf opt cek RunVM) (mapM_ runBytecode files)
+    go (CC, opt, cek, files) =
+              runOrFail (Conf opt cek CC) (mapM_ compileBytecode files)
+    go (m,opt, cek, files) =
+              runOrFail (Conf opt cek m) (mapM_ compileFile files)
 
 runOrFail :: Conf -> FD4 a -> IO a
 runOrFail c m = do
@@ -197,12 +198,12 @@ parseIO filename p x = case runP p x filename of
                   Left e  -> throwError (ParseErr e)
                   Right r -> return r
 
-evalDecl :: MonadFD4 m => Decl TTerm -> m (Decl TTerm)
-evalDecl (Decl p n ty e) =
+evalDecl :: MonadFD4 m => (TTerm -> m TTerm) -> Decl TTerm -> m (Decl TTerm)
+evalDecl f (Decl p n ty e) =
   do
-    e' <- eval e
+    e' <- f e
     return (Decl p n ty e')
-evalDecl (DeclType p n ty) = return (DeclType p n ty)
+evalDecl _ (DeclType p n ty) = return (DeclType p n ty)
 
 handleDecl ::  MonadFD4 m => SDecl STerm -> m ()
 handleDecl d = do
@@ -233,17 +234,18 @@ handleDecl d = do
               opt <- getOpt
               td' <- if opt then optimize td else (return td)
               (case td' of
-                Decl p n ty b -> do { te <- eval b; addDecl (Decl p n ty te) }
+                Decl p n ty b -> do { te <- evalCEK b; addDecl (Decl p n ty te) }
                 DeclType _ _ _ -> addDecl td')
           Bytecompile -> undefined -- No lidia con decl
           RunVM -> undefined -- No se ejecuta aca
           CC -> undefined -- No se ejecuta aca
           Eval -> do
+              cek <- getCek
               noTypes <- (toPureDecl . elabDecl) d
               td <- typecheckDecl noTypes
               opt <- getOpt
               td' <- if opt then optimize td else (return td)
-              ed <- evalDecl td'
+              ed <- evalDecl (if not cek then eval else evalCEK) td'
               addDecl ed
 
 typecheckDecl :: MonadFD4 m => Decl STerm -> m (Decl TTerm)
