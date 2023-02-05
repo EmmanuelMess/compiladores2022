@@ -13,7 +13,6 @@ EXE	:= $(shell stack exec whereis compiladores-exe | awk '{print $$2}')
 VM	:= ./vm/macc
 
 EXTRAFLAGS	:=
-EXTRAFLAGS	+= --optimize
 
 # Las reglas a chequear. Se puede deshabilitar toda una familia de tests
 # comentando una de estas líneas.
@@ -21,8 +20,16 @@ CHECK	+= $(patsubst %,%.check_eval,$(TESTS))
 CHECK	+= $(patsubst %,%.check_cek,$(TESTS))
 CHECK	+= $(patsubst %,%.check_bc32_h,$(TESTS))
 CHECK	+= $(patsubst %,%.check_bc32,$(TESTS))
-# CHECK	+= $(patsubst %,%.check_eval_opt,$(TESTS))
+CHECK	+= $(patsubst %,%.check_eval_opt,$(TESTS))
 # CHECK	+= $(patsubst %,%.check_opt,$(TESTS))
+
+ACTUAL	+= $(patsubst %,%.actual_out_eval,$(TESTS))
+ACTUAL	+= $(patsubst %,%.actual_out_cek,$(TESTS))
+ACTUAL	+= $(patsubst %,%.actual_out_bc32,$(TESTS))
+ACTUAL	+= $(patsubst %,%.actual_out_bc32_h,$(TESTS))
+ACTUAL	+= $(patsubst %,%.actual_out_eval_opt,$(TESTS))
+ACTUAL	+= $(patsubst %,%.actual_opt_out,$(TESTS))
+ACTUAL	+= $(patsubst %.fd4,%.bc32,$(TESTS))
 
 # Ejemplo: así se puede apagar un test en particular.
 # CHECK	:= $(filter-out tests/correctos/grande.fd4.check_bc32,$(CHECK))
@@ -33,6 +40,10 @@ test_all: $(CHECK)
 	@echo "---------------------------------"
 	@echo "             Todo OK             "
 	@echo "---------------------------------"
+
+test_clean:
+	rm -f $(CHECK)
+	rm -f $(ACTUAL)
 
 Q=@
 ifneq ($(V),)
@@ -131,12 +142,6 @@ accept: $(patsubst %,%.accept,$(TESTS))
 
 # Estas directivas indican que NO se borren los archivos intermedios,
 # así podemos examinarlos, particularmente cuando algo no anda.
-.SECONDARY: $(patsubst %,%.actual_out_eval,$(TESTS))
-.SECONDARY: $(patsubst %,%.actual_out_cek,$(TESTS))
-.SECONDARY: $(patsubst %,%.actual_out_bc32,$(TESTS))
-.SECONDARY: $(patsubst %,%.actual_out_bc32_h,$(TESTS))
-.SECONDARY: $(patsubst %,%.actual_out_eval_opt,$(TESTS))
-.SECONDARY: $(patsubst %,%.actual_opt_out,$(TESTS))
-.SECONDARY: $(patsubst %.fd4,%.bc32,$(TESTS))
+.SECONDARY: $(ACTUAL)
 
 .PHONY: test_all accept

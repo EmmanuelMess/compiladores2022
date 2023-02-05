@@ -30,4 +30,8 @@ test: build vm
 vm:
 	$(MAKE) -C vm
 
+clean: test_clean
+	stack clean
+	rm -f vm/*.o vm/macc
+
 .PHONY: vm
