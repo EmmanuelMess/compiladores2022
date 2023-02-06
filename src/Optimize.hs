@@ -172,18 +172,18 @@ removeLet t@(Let _ _ _ def (Sc1 t1)) =
 
 findInLet :: TTerm -> Bool
 findInLet = findInLet' 0
-
-findInLet' :: Int -> TTerm -> Bool
-findInLet' n (V _ (Bound i)) = n == i
-findInLet' n (V _ _) = False
-findInLet' n (Lam _ _ _ (Sc1 t)) = findInLet' n t
-findInLet' n (App _ l r) = (findInLet' n l) || (findInLet' (n+1) r)
-findInLet' n (Print _ _ t) = (findInLet' n t)
-findInLet' n (BinaryOp _ _ t u) = (findInLet' n t) || (findInLet' n u)
-findInLet' n (Fix _ _ _ _ _ (Sc2 t)) = (findInLet' (n+2) t)
-findInLet' n (IfZ _ c t e) = (findInLet' n c) || (findInLet' n t) || (findInLet' n e)
-findInLet' n (Const _ _) = False
-findInLet' n (Let _ _ _ e (Sc1 t)) = (findInLet' n e) || (findInLet' (n+1) t)
+  where
+    findInLet' :: Int -> TTerm -> Bool
+    findInLet' n (V _ (Bound i)) = n == i
+    findInLet' n (V _ _) = False
+    findInLet' n (Lam _ _ _ (Sc1 t)) = findInLet' n t
+    findInLet' n (App _ l r) = (findInLet' n l) || (findInLet' (n+1) r)
+    findInLet' n (Print _ _ t) = (findInLet' n t)
+    findInLet' n (BinaryOp _ _ t u) = (findInLet' n t) || (findInLet' n u)
+    findInLet' n (Fix _ _ _ _ _ (Sc2 t)) = (findInLet' (n+2) t)
+    findInLet' n (IfZ _ c t e) = (findInLet' n c) || (findInLet' n t) || (findInLet' n e)
+    findInLet' n (Const _ _) = False
+    findInLet' n (Let _ _ _ e (Sc1 t)) = (findInLet' n e) || (findInLet' (n+1) t)
 
 findPrint :: TTerm -> Bool
 findPrint (V _ _) = True -- TODO fix (puede ser referencia a funcion que contine print o puede que no contenga print, hay que chequear a que hace referencia)
@@ -289,24 +289,24 @@ constConvert' (Let p n nty def (Sc1 t)) =
 
 replaceConstUsage :: TTerm -> TTerm -> TTerm
 replaceConstUsage = replaceConstUsage' 0
-
-replaceConstUsage' :: Int -> TTerm -> TTerm -> TTerm
-replaceConstUsage' n t@(V _ _) _ = t
-replaceConstUsage' n t@(Const _ _) _ = t
-replaceConstUsage' n (Lam p x xty (Sc1 t)) replace = Lam p x xty (Sc1 $ replaceConstUsage' (n+1) t replace)
-replaceConstUsage' n t@(App p (V _ (Bound i)) t1@(Const _ _)) replace =
-  if i == n
-  then App p replace t1
-  else t
-replaceConstUsage' n (App p l r) replace =
-  App p (replaceConstUsage' n l replace) (replaceConstUsage' n r replace)
-replaceConstUsage' n (Print p str t) replace =
-  Print p str (replaceConstUsage' n t replace)
-replaceConstUsage' n (BinaryOp p op t u) replace =
-  BinaryOp p op (replaceConstUsage' n t replace) (replaceConstUsage' n u replace)
-replaceConstUsage' n (Fix p m mty x xty (Sc2 t)) replace =
-  Fix p m mty x xty (Sc2 $ replaceConstUsage' (n+2) t replace)
-replaceConstUsage' n (IfZ p c t e) replace =
-  IfZ p (replaceConstUsage' n c replace) (replaceConstUsage' n t replace) (replaceConstUsage' n e replace)
-replaceConstUsage' n (Let p x xty t1 (Sc1 t2)) replace =
-  Let p x xty (replaceConstUsage' n t1 replace) (Sc1 $ replaceConstUsage' (n+1) t2 replace)
+  where
+    replaceConstUsage' :: Int -> TTerm -> TTerm -> TTerm
+    replaceConstUsage' n t@(V _ _) _ = t
+    replaceConstUsage' n t@(Const _ _) _ = t
+    replaceConstUsage' n (Lam p x xty (Sc1 t)) replace = Lam p x xty (Sc1 $ replaceConstUsage' (n+1) t replace)
+    replaceConstUsage' n t@(App p (V _ (Bound i)) t1@(Const _ _)) replace =
+      if i == n
+      then App p replace t1
+      else t
+    replaceConstUsage' n (App p l r) replace =
+      App p (replaceConstUsage' n l replace) (replaceConstUsage' n r replace)
+    replaceConstUsage' n (Print p str t) replace =
+      Print p str (replaceConstUsage' n t replace)
+    replaceConstUsage' n (BinaryOp p op t u) replace =
+      BinaryOp p op (replaceConstUsage' n t replace) (replaceConstUsage' n u replace)
+    replaceConstUsage' n (Fix p m mty x xty (Sc2 t)) replace =
+      Fix p m mty x xty (Sc2 $ replaceConstUsage' (n+2) t replace)
+    replaceConstUsage' n (IfZ p c t e) replace =
+      IfZ p (replaceConstUsage' n c replace) (replaceConstUsage' n t replace) (replaceConstUsage' n e replace)
+    replaceConstUsage' n (Let p x xty t1 (Sc1 t2)) replace =
+      Let p x xty (replaceConstUsage' n t1 replace) (Sc1 $ replaceConstUsage' (n+1) t2 replace)
