@@ -1,0 +1,11 @@
+let rec k (x: Nat) (y: Nat): Nat -> Nat =
+    let rec f (z: Nat): Nat =
+        let g (m: Nat): Nat =
+            ifz x
+            then print "a" x
+            else
+                let n: Nat = print "b" (x-1)
+                in k (x - 1) 12 (print "z" z)
+        in g 0
+    in f
+let r: Nat = k 10 11 12
