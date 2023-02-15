@@ -287,7 +287,9 @@ runBC' (FUNCTION:n:bc) e s =
     cf = take (fromIntegral n) bc
     c = drop (fromIntegral n) bc
   in case c of
-       (FIX:c') -> let s' = (Fun s' cf):s
+       (FIX:c') -> let
+                      efix = (Fun efix cf):e
+                      s' = (Fun efix cf):s
                    in runBC' c' e s'
        otherwise -> runBC' c e ((Fun e cf):s)
 runBC' (CALL:bc) e (v:(Fun ef cf):s) = runBC' cf (v:ef) ((RA e bc):s)
