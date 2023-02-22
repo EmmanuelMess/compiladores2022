@@ -1,0 +1,2 @@
+Chequeando tipos de tests/ok/10-sugar/100-letfun.fd4
+let f = fun (x : Nat) -> 1 + x
