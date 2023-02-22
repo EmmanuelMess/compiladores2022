@@ -1,0 +1,17 @@
+Chequeando tipos de testfiles/lets.fd4
+let f = fun (x : Nat) ->
+  let ( : Nat) =
+    print "x = " x
+    in
+    let (0 : Nat) =
+      print "x2 = " 3
+      in
+      let (1 : Nat) = print "x3 = " 255 in let (2 : Nat) = print "x4 = " 6 in 0
+Chequeando tipos de testfiles/lets.fd4
+let r = let ( : Nat) =
+  print "x = " 0
+  in
+  let (0 : Nat) =
+    print "x2 = " 3
+    in
+    let (1 : Nat) = print "x3 = " 255 in let (2 : Nat) = print "x4 = " 6 in 0

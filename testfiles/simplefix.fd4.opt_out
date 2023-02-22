@@ -1,0 +1,11 @@
+Chequeando tipos de testfiles/simplefix.fd4
+let k = fix (k0 : Nat -> Nat) (x : Nat) ->
+  ifz x then print "a" 5 else let (n : Nat) = print "b" (x - 1) in k0 (x - 1)
+Chequeando tipos de testfiles/simplefix.fd4
+let r = (fix (k0 : Nat -> Nat) (x : Nat) ->
+  ifz
+    x
+    then
+    print "a" 5
+    else
+    let (n : Nat) = print "b" (x - 1) in k0 (x - 1)) 10

@@ -1,0 +1,8 @@
+Chequeando tipos de testfiles/sinonimostipo.fd4
+type n = Nat
+Chequeando tipos de testfiles/sinonimostipo.fd4
+let a = 3
+Chequeando tipos de testfiles/sinonimostipo.fd4
+type nn = Nat -> Nat
+Chequeando tipos de testfiles/sinonimostipo.fd4
+let b = 3

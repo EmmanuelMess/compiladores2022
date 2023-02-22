@@ -1,0 +1,4 @@
+Chequeando tipos de testfiles/samenamefunctions.fd4
+let r0 = print "0" 3
+Chequeando tipos de testfiles/samenamefunctions.fd4
+let r1 = print "1" 4

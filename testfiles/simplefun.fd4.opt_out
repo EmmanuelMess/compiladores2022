@@ -1,0 +1,4 @@
+Chequeando tipos de testfiles/simplefun.fd4
+let f = fun (x : Nat) -> fun (y : Nat) -> x + y
+Chequeando tipos de testfiles/simplefun.fd4
+let x = print "x" 11

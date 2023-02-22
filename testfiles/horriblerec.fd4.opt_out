@@ -1,0 +1,22 @@
+Chequeando tipos de testfiles/horriblerec.fd4
+let k = fix (k0 : Nat -> Nat -> Nat -> Nat) (x : Nat) ->
+  fun (y : Nat) ->
+    fix (f : Nat -> Nat) (z : Nat) ->
+      ifz
+        x
+        then
+        print "a" x
+        else
+        let ( : Nat) = print "b" (x - 1) in k0 (x - 1) 12 (print "z" z)
+Chequeando tipos de testfiles/horriblerec.fd4
+let r = (fix (k0 : Nat -> Nat -> Nat -> Nat) (x : Nat) ->
+  fun (y : Nat) ->
+    fix (f : Nat -> Nat) (z : Nat) ->
+      ifz
+        x
+        then
+        print "a" x
+        else
+        let ( : Nat) = print "b" (x - 1) in k0 (x - 1) 12 (print "z" z)) 10
+  11
+  12
