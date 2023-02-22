@@ -1,0 +1,11 @@
+Chequeando tipos de tests/ok/00-basicos/101-print.fd4
+let test = fun (x : Nat) ->
+  let (res : Nat) =
+    ((x + x) + x) + x
+    in
+    let (z : Nat) = print "res = " res in res
+Chequeando tipos de tests/ok/00-basicos/101-print.fd4
+let x = let (res : Nat) =
+  ((let (r : Nat) = 255 in r + r) + 255) + 255
+  in
+  let ( : Nat) = print "res = " res in res

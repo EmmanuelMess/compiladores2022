@@ -1,0 +1,2 @@
+Chequeando tipos de tests/ok/00-basicos/001-print.fd4
+let x = print "X = " 246

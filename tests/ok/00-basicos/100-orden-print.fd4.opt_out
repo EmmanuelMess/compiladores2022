@@ -1,0 +1,6 @@
+Chequeando tipos de tests/ok/00-basicos/100-orden-print.fd4
+let orden_de_impresion = print "uno! " (print "dos! " 3)
+Chequeando tipos de tests/ok/00-basicos/100-orden-print.fd4
+let f = fun (x : Nat) -> ifz x then print "uno! " 1 else print "dos! " 2
+Chequeando tipos de tests/ok/00-basicos/100-orden-print.fd4
+let test = let (a : Nat) = f 0 in let (b : Nat) = f 1 in 0

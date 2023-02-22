@@ -1,0 +1,43 @@
+Chequeando tipos de tests/ok/00-basicos/200-seq.fd4
+let f = fun (n : Nat) ->
+  let ( : Nat) =
+    print "hola" 1
+    in
+    let (0 : Nat) =
+      print "hola" 1
+      in
+      let (1 : Nat) =
+        print "hola" 1
+        in
+        let (2 : Nat) =
+          print "hola" 1
+          in
+          let (3 : Nat) =
+            print "hola" 1
+            in
+            let (4 : Nat) =
+              print "hola" 1
+              in
+              let (5 : Nat) = print "hola" 1 in 21
+Chequeando tipos de tests/ok/00-basicos/200-seq.fd4
+let x = print
+  "res = "
+  (let ( : Nat) =
+  print "hola" 1
+  in
+  let (0 : Nat) =
+    print "hola" 1
+    in
+    let (1 : Nat) =
+      print "hola" 1
+      in
+      let (2 : Nat) =
+        print "hola" 1
+        in
+        let (3 : Nat) =
+          print "hola" 1
+          in
+          let (4 : Nat) =
+            print "hola" 1
+            in
+            let (5 : Nat) = print "hola" 1 in 21)
