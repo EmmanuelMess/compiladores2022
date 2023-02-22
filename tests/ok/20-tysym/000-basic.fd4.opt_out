@@ -1,0 +1,4 @@
+Chequeando tipos de tests/ok/20-tysym/000-basic.fd4
+type Mynat = Nat
+Chequeando tipos de tests/ok/20-tysym/000-basic.fd4
+let x = 20
