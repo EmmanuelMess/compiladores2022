@@ -1,8 +1,0 @@
-Chequeando tipos de testfiles/operadores.fd4
-let f = fun (x : Nat) -> print "x=" x
-Chequeando tipos de testfiles/operadores.fd4
-let a = print "x=" 0
-Chequeando tipos de testfiles/operadores.fd4
-let g = fun ($ : Nat) -> print "x=" $
-Chequeando tipos de testfiles/operadores.fd4
-let b = print "x=" 0

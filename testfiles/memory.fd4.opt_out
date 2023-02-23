@@ -1,6 +1,0 @@
-Chequeando tipos de testfiles/memory.fd4
-let f = fix (f0 : Nat -> Nat) (x : Nat) ->
-  let (a : Nat) = print "paso" (x - 1) in ifz a then a else f0 a
-Chequeando tipos de testfiles/memory.fd4
-let ret = (fix (f0 : Nat -> Nat) (x : Nat) ->
-  let (a : Nat) = print "paso" (x - 1) in ifz a then a else f0 a) 100000

@@ -1,8 +1,0 @@
-Chequeando tipos de testfiles/recfun.fd4
-let fac = fix (fac0 : Nat -> Nat) (m : Nat) ->
-  ifz m then m else m + (fac0 (m - 1))
-Chequeando tipos de testfiles/recfun.fd4
-let e = print
-  "a="
-  ((fix (fac0 : Nat -> Nat) (m : Nat) ->
-  ifz m then m else m + (fac0 (m - 1))) 2)
