@@ -32,6 +32,7 @@ import Prettyprinter
       nest,
       sep,
       parens,
+      unAnnotate,
       Doc,
       Pretty(pretty) )
 import MonadFD4 ( gets, MonadFD4 )
@@ -119,7 +120,7 @@ ppTy t =
                      NamedTy n -> f (maybe undefined id (lookup n tys))
                      NatTy -> NatTy
                      FunTy x y -> FunTy (f x) (f y))
-    return ((render . ty2doc . f) t)
+    return ((render False . ty2doc . f) t)
 
 c2doc :: Const -> Doc AnsiStyle
 c2doc (CNat n) = constColor (pretty (show n))
@@ -207,32 +208,32 @@ pp t =
                      NamedTy n -> f (maybe undefined id (lookup n tys))
                      NatTy -> NatTy
                      FunTy x y -> FunTy (f x) (f y))
-    return (render . t2doc False $ openAll fst (map declName gdecl) $ (openType f) t)
+    return (render False $ t2doc False $ openAll fst (map declName gdecl) $ (openType f) t)
 
-render :: Doc AnsiStyle -> String
-render = unpack . renderStrict . layoutSmart defaultLayoutOptions
+render :: Bool -> Doc AnsiStyle -> String
+render noColor = unpack . renderStrict . (layoutSmart defaultLayoutOptions) . (if noColor then unAnnotate else id)
 
 -- | Pretty printing de declaraciones
-ppDecl :: MonadFD4 m => Decl TTerm -> m String
-ppDecl (Decl p x _ t) = do
+ppDecl :: MonadFD4 m => Bool -> Decl TTerm -> m String
+ppDecl noColor (Decl p x _ t) = do
   gdecl <- gets glb
   tys <- gets tyTypeEnv
   let f = \ty -> (case ty of
                    NamedTy n -> f (maybe undefined id (lookup n tys))
                    NatTy -> NatTy
                    FunTy x y -> FunTy (f x) (f y))
-  return (render $ sep [defColor (pretty "let")
+  return (render noColor $ sep [defColor (pretty "let")
                        , name2doc x 
                        , defColor (pretty "=")] 
                    <+> nest 2 (t2doc False (openAll fst (map declName gdecl) $ openType f t)))
-ppDecl (DeclType p x ty) = do
+ppDecl noColor (DeclType p x ty) = do
   gdecl <- gets glb
   tys <- gets tyTypeEnv
   let f = \ty -> (case ty of
                   NamedTy n -> f (maybe undefined id (lookup n tys))
                   NatTy -> NatTy
                   FunTy x y -> FunTy (f x) (f y))
-  return (render $ sep [defColor (pretty "type")
+  return (render noColor $ sep [defColor (pretty "type")
                      , name2doc x
                      , defColor (pretty "=")]
                  <+> nest 2 (ty2doc (f ty)))

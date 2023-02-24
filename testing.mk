@@ -119,7 +119,7 @@ accept: $(patsubst %,%.accept,$(TESTS))
 # la salida de --typecheck --optimize respecto a la esperada
 # (guardada en un archivo)
 %.actual_opt_out: % $(EXE)
-	$(Q)$(EXE) $(EXTRAFLAGS) --typecheck --optimize $< > $@
+	$(Q)$(EXE) $(EXTRAFLAGS) --typecheck --optimize --noColor $< > $@
 
 %.check_opt: %.opt_out %.actual_opt_out
 	$(Q)diff -u $^

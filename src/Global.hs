@@ -53,6 +53,7 @@ data Mode =
 data Conf = Conf {
     opt :: Bool,          --  ^ True, si estan habilitadas las optimizaciones.
     cek :: Bool,          --  ^ True, si se ejecuta en el CEK.
+    noColor :: Bool,      --  ^ True, si se imprime el texto sin enriquecer
     modo :: Mode
 }
 

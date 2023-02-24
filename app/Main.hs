@@ -47,8 +47,8 @@ prompt :: String
 prompt = "FD4> "
 
 -- | Parser de banderas
-parseMode :: Parser (Mode,Bool,Bool)
-parseMode = (,,) <$>
+parseMode :: Parser (Mode,Bool,Bool,Bool)
+parseMode = (,,,) <$>
       (flag' Typecheck         (long "typecheck" <> short 't' <> help "Chequear tipos e imprimir el término")
       <|> flag' InteractiveCEK (long "interactiveCEK" <> short 'k' <> help "Ejecutar interactivamente en la CEK")
       <|> flag' Bytecompile    (long "bytecompile" <> short 'm' <> help "Compilar a la BVM")
@@ -62,10 +62,11 @@ parseMode = (,,) <$>
       )
        <*> flag False True (long "optimize" <> short 'o' <> help "Optimizar código")
        <*> flag False True (long "cek" <> help "Pasar por CEK") -- TODO hacer solo valida cuando se ejecuta con --eval
+       <*> flag False True (long "noColor" <> help "Salida de texto es sin color") -- TODO hacer solo valida cuando se ejecuta con --typecheck
 
 -- | Parser de opciones general, consiste de un modo y una lista de archivos a procesar
-parseArgs :: Parser (Mode,Bool,Bool, [FilePath])
-parseArgs = (\(a,b,c) d -> (a,b,c,d)) <$> parseMode <*> many (argument str (metavar "FILES..."))
+parseArgs :: Parser (Mode,Bool,Bool,Bool,[FilePath])
+parseArgs = (\(a,b,c,d) e -> (a,b,c,d,e)) <$> parseMode <*> many (argument str (metavar "FILES..."))
 
 main :: IO ()
 main = execParser opts >>= go
@@ -75,19 +76,19 @@ main = execParser opts >>= go
      <> progDesc "Compilador de FD4"
      <> header "Compilador de FD4 de la materia Compiladores 2022" )
 
-    go :: (Mode,Bool,Bool,[FilePath]) -> IO ()
-    go (Interactive, opt, cek, files) =
-              runOrFail (Conf opt cek Interactive) (runInputT defaultSettings (repl files))
-    go (InteractiveCEK, opt, cek, files) =
-              runOrFail (Conf opt cek InteractiveCEK) (runInputT defaultSettings (repl files))
-    go (Bytecompile, opt, cek, files) =
-              runOrFail (Conf opt cek Bytecompile) (mapM_ compileBytecode files)
-    go (RunVM, opt, cek, files) =
-              runOrFail (Conf opt cek RunVM) (mapM_ runBytecode files)
-    go (CC, opt, cek, files) =
-              runOrFail (Conf opt cek CC) (mapM_ compileBytecode files)
-    go (m,opt, cek, files) =
-              runOrFail (Conf opt cek m) (mapM_ compileFile files)
+    go :: (Mode,Bool,Bool,Bool,[FilePath]) -> IO () --TODO refactor
+    go (Interactive, opt, cek, noColor, files) =
+              runOrFail (Conf opt cek noColor Interactive) (runInputT defaultSettings (repl files))
+    go (InteractiveCEK, opt, cek, noColor, files) =
+              runOrFail (Conf opt cek noColor InteractiveCEK) (runInputT defaultSettings (repl files))
+    go (Bytecompile, opt, cek, noColor, files) =
+              runOrFail (Conf opt cek noColor Bytecompile) (mapM_ compileBytecode files)
+    go (RunVM, opt, cek, noColor, files) =
+              runOrFail (Conf opt cek noColor RunVM) (mapM_ runBytecode files)
+    go (CC, opt, cek, noColor, files) =
+              runOrFail (Conf opt cek noColor CC) (mapM_ compileBytecode files)
+    go (m,opt, cek, noColor, files) =
+              runOrFail (Conf opt cek noColor m) (mapM_ compileFile files)
 
 runOrFail :: Conf -> FD4 a -> IO a
 runOrFail c m = do
@@ -224,8 +225,9 @@ handleDecl d = do
               td <- typecheckDecl noTypes
               addDecl td
               opt <- getOpt
+              noColor <- getNoColor
               td' <- if opt then optimize td else (return td)
-              ppterm <- ppDecl td'
+              ppterm <- ppDecl noColor td'
               printFD4 ppterm
               addDecl td'
           InteractiveCEK -> do

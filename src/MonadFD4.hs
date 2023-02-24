@@ -30,6 +30,7 @@ module MonadFD4 (
   getMode,
   getOpt,
   getCek,
+  getNoColor,
   eraseLastFileDecls,
   failPosFD4,
   failFD4,
@@ -74,6 +75,9 @@ getOpt = asks opt
 
 getCek :: MonadFD4 m => m Bool
 getCek = asks cek
+
+getNoColor :: MonadFD4 m => m Bool
+getNoColor = asks noColor
 
 getMode :: MonadFD4 m => m Mode
 getMode = asks modo
